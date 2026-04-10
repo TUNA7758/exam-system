@@ -68,9 +68,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
     <div style="font-size:14px;color:#6b7280;">불러오는 중...</div>
   </div>
 </div>
-<div id="error-screen" style="display:none;">
-  <div class="error-box" id="error-msg"></div>
-</div>
+<div id="error-screen" style="display:none;"><div class="error-box" id="error-msg"></div></div>
 <div id="verify-screen" style="display:none;">
   <div class="header">
     <div class="header-title" id="verify-exam-title">—</div>
@@ -127,194 +125,156 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
   </div>
   <div class="essay-notice" id="essay-notice" style="display:none;">📝 서술형 답안은 선생님이 확인 후 점수를 입력해드립니다.</div>
 </div>
-
 <script>
-const SB_URL  = 'https://vvbanjdioahaaqamibbh.supabase.co';
-const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2YmFuamRpb2FoYWFxYW1pYmJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzAzOTYsImV4cCI6MjA5MTQwNjM5Nn0.gKFDN93mmaKhVH-Quw69bZl9AYaVp_b4aJ02oT9C-Bc';
-const CHOICES = ['①','②','③','④','⑤'];
+const SB_URL='https://vvbanjdioahaaqamibbh.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2YmFuamRpb2FoYWFxYW1pYmJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzAzOTYsImV4cCI6MjA5MTQwNjM5Nn0.gKFDN93mmaKhVH-Quw69bZl9AYaVp_b4aJ02oT9C-Bc';
+const CHOICES=['①','②','③','④','⑤'];
+const H={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
 
-let examData    = null;
-let studentInfo = null;
-const mcAnswers    = {};
-const essayAnswers = {};
+let examData=null,studentInfo=null;
+const mcAnswers={},essayAnswers={};
 
-async function sbGet(table, query='') {
-  const res = await fetch(`${SB_URL}/rest/v1/${table}${query}`, {
-    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY }
-  });
-  return res.json();
-}
-async function sbPost(table, body) {
-  const res = await fetch(`${SB_URL}/rest/v1/${table}`, {
-    method: 'POST',
-    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-    body: JSON.stringify(body)
-  });
-  return res.json();
-}
-async function sbPatch(table, body, query) {
-  await fetch(`${SB_URL}/rest/v1/${table}${query}`, {
-    method: 'PATCH',
-    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+async function sbGet(t,q=''){const r=await fetch(SB_URL+'/rest/v1/'+t+q,{headers:H});return r.json();}
+async function sbPost(t,b){const r=await fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:{...H,'Prefer':'return=representation'},body:JSON.stringify(b)});return r.json();}
+async function sbPatch(t,b,q){await fetch(SB_URL+'/rest/v1/'+t+q,{method:'PATCH',headers:H,body:JSON.stringify(b)});}
+
+function showError(msg){
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('verify-screen').style.display='none';
+  document.getElementById('exam-screen').style.display='none';
+  document.getElementById('error-screen').style.display='block';
+  document.getElementById('error-msg').innerHTML=msg;
 }
 
-function showError(msg) {
-  document.getElementById('loading-screen').style.display = 'none';
-  document.getElementById('verify-screen').style.display  = 'none';
-  document.getElementById('exam-screen').style.display    = 'none';
-  document.getElementById('error-screen').style.display   = 'block';
-  document.getElementById('error-msg').innerHTML = msg;
-}
+async function init(){
+  const p=new URLSearchParams(location.search);
+  const examId=p.get('examId');
+  const sq=p.get('s');
+  if(!examId){showError('QR코드가 올바르지 않습니다.<br>시험지의 QR코드를 다시 스캔해주세요.');return;}
+  try{
+    const exams=await sbGet('exams','?exam_id=eq.'+examId);
+    if(!exams||!exams.length){showError('시험을 찾을 수 없습니다.');return;}
+    if(exams[0].active!=='Y'){showError('마감된 시험입니다. 선생님께 문의하세요.');return;}
+    const allQuestions=JSON.parse(exams[0].questions_json);
+    examData={...exams[0],questions:allQuestions.map(q=>({num:q.num,type:q.type,score:q.score})),allQuestions};
+  }catch(e){showError('서버 연결 실패. 인터넷을 확인해주세요.');return;}
 
-async function init() {
-  const p      = new URLSearchParams(location.search);
-  const examId = p.get('examId');
-  const sq     = p.get('s');
-  if (!examId) { showError('QR코드가 올바르지 않습니다.<br>시험지의 QR코드를 다시 스캔해주세요.'); return; }
-
-  try {
-    const exams = await sbGet('시험목록', `?시험ID=eq.${examId}`);
-    if (!exams.length) { showError('시험을 찾을 수 없습니다.'); return; }
-    if (exams[0].활성화 !== 'Y') { showError('마감된 시험입니다. 선생님께 문의하세요.'); return; }
-    examData = { ...exams[0], questions: JSON.parse(exams[0].답안JSON).map(q=>({num:q.num,type:q.type,score:q.score})), allQuestions: JSON.parse(exams[0].답안JSON) };
-  } catch(e) { showError('서버 연결 실패. 인터넷을 확인해주세요.'); return; }
-
-  if (sq) {
-    try {
-      const info = JSON.parse(atob(sq));
-      studentInfo = { classId: info.classId, studentNum: String(info.studentNum), studentName: info.studentName };
-      document.getElementById('loading-screen').style.display = 'none';
-      showExamScreen(); return;
-    } catch(e) {}
+  if(sq){
+    try{
+      const info=JSON.parse(atob(sq));
+      studentInfo={classId:info.classId,studentNum:String(info.studentNum),studentName:info.studentName};
+      document.getElementById('loading-screen').style.display='none';
+      showExamScreen();return;
+    }catch(e){}
   }
-
-  document.getElementById('loading-screen').style.display    = 'none';
-  document.getElementById('verify-exam-title').textContent   = examData.시험제목;
-  document.getElementById('verify-exam-class').textContent   = examData.반이름 + ' · ' + (examData.시험일||'');
-  document.getElementById('verify-screen').style.display     = 'block';
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('verify-exam-title').textContent=examData.title;
+  document.getElementById('verify-exam-class').textContent=(examData.class_name||'')+(examData.exam_date?' · '+examData.exam_date:'');
+  document.getElementById('verify-screen').style.display='block';
 }
 
-function manualVerify() {
-  const num  = document.getElementById('manual-num').value.trim();
-  const name = document.getElementById('manual-name').value.trim();
-  if (!num || !name) { alert('번호와 이름을 모두 입력해주세요.'); return; }
-  studentInfo = { classId: examData.반ID, studentNum: num, studentName: name };
-  document.getElementById('verify-screen').style.display = 'none';
+function manualVerify(){
+  const num=document.getElementById('manual-num').value.trim();
+  const name=document.getElementById('manual-name').value.trim();
+  if(!num||!name){alert('번호와 이름을 모두 입력해주세요.');return;}
+  studentInfo={classId:examData.class_id,studentNum:num,studentName:name};
+  document.getElementById('verify-screen').style.display='none';
   showExamScreen();
 }
 
-function showExamScreen() {
-  document.getElementById('exam-screen').style.display = 'block';
-  document.getElementById('exam-title').textContent    = examData.시험제목;
-  document.getElementById('exam-class').textContent    = examData.반이름 + ' · ' + (examData.시험일||'');
-  document.getElementById('verified-badge').textContent = '✓  ' + studentInfo.studentName + ' 학생 확인됨';
-  document.getElementById('student-name').value = studentInfo.studentName;
-  document.getElementById('student-num').value  = studentInfo.studentNum + '번';
-
-  const mcQs    = examData.questions.filter(q=>q.type==='mc');
-  const essayQs = examData.questions.filter(q=>q.type==='essay');
-
-  if (mcQs.length) {
-    document.getElementById('mc-section-title').style.display = 'block';
-    const wrap = document.getElementById('mc-questions');
-    mcQs.forEach(q => {
-      const card = document.createElement('div');
-      card.className = 'q-card';
-      card.innerHTML = `<div class="q-head"><span class="q-num">${q.num}번</span><span class="q-score">${q.score}점</span></div><div class="choices" id="ch-${q.num}"></div>`;
+function showExamScreen(){
+  document.getElementById('exam-screen').style.display='block';
+  document.getElementById('exam-title').textContent=examData.title;
+  document.getElementById('exam-class').textContent=(examData.class_name||'')+(examData.exam_date?' · '+examData.exam_date:'');
+  document.getElementById('verified-badge').textContent='✓  '+studentInfo.studentName+' 학생 확인됨';
+  document.getElementById('student-name').value=studentInfo.studentName;
+  document.getElementById('student-num').value=studentInfo.studentNum+'번';
+  const mcQs=examData.questions.filter(q=>q.type==='mc');
+  const essayQs=examData.questions.filter(q=>q.type==='essay');
+  if(mcQs.length){
+    document.getElementById('mc-section-title').style.display='block';
+    const wrap=document.getElementById('mc-questions');
+    mcQs.forEach(q=>{
+      const card=document.createElement('div');card.className='q-card';
+      card.innerHTML=`<div class="q-head"><span class="q-num">${q.num}번</span><span class="q-score">${q.score}점</span></div><div class="choices" id="ch-${q.num}"></div>`;
       wrap.appendChild(card);
-      const cEl = card.querySelector('#ch-'+q.num);
-      CHOICES.forEach(label => {
-        const btn = document.createElement('button');
-        btn.className = 'choice'; btn.textContent = label;
-        btn.onclick = () => { cEl.querySelectorAll('.choice').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); mcAnswers[q.num]=label; };
+      const cEl=card.querySelector('#ch-'+q.num);
+      CHOICES.forEach(label=>{
+        const btn=document.createElement('button');btn.className='choice';btn.textContent=label;
+        btn.onclick=()=>{cEl.querySelectorAll('.choice').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');mcAnswers[q.num]=label;};
         cEl.appendChild(btn);
       });
     });
   }
-  if (essayQs.length) {
-    document.getElementById('essay-section-title').style.display = 'block';
-    const wrap = document.getElementById('essay-questions');
-    essayQs.forEach(q => {
-      const card = document.createElement('div');
-      card.className = 'q-card';
-      card.innerHTML = `<div class="q-head"><span class="q-num">${q.num}번</span><span class="q-score">${q.score}점</span><span class="tag-essay">서술형 — 선생님 채점</span></div><textarea class="essay-box" id="ess-${q.num}" placeholder="풀이 과정과 답을 써주세요..."></textarea>`;
+  if(essayQs.length){
+    document.getElementById('essay-section-title').style.display='block';
+    const wrap=document.getElementById('essay-questions');
+    essayQs.forEach(q=>{
+      const card=document.createElement('div');card.className='q-card';
+      card.innerHTML=`<div class="q-head"><span class="q-num">${q.num}번</span><span class="q-score">${q.score}점</span><span class="tag-essay">서술형 — 선생님 채점</span></div><textarea class="essay-box" id="ess-${q.num}" placeholder="풀이 과정과 답을 써주세요..."></textarea>`;
       wrap.appendChild(card);
-      card.querySelector('#ess-'+q.num).addEventListener('input', e=>{ essayAnswers[q.num]=e.target.value; });
+      card.querySelector('#ess-'+q.num).addEventListener('input',e=>{essayAnswers[q.num]=e.target.value;});
     });
   }
 }
 
-async function submitAnswers() {
-  const btn = document.getElementById('submit-btn');
-  btn.disabled = true; btn.textContent = '제출 중...';
-  try {
-    // 중복 체크
-    const existing = await sbGet('제출기록', `?시험ID=eq.${examData.시험ID}&학생번호=eq.${studentInfo.studentNum}&반ID=eq.${examData.반ID}`);
-    if (existing.length) { alert('이미 제출한 시험입니다. 선생님께 문의하세요.'); btn.disabled=false; btn.textContent='답안 제출하기'; return; }
-
-    const allQ   = examData.allQuestions;
-    const mcQs   = allQ.filter(q=>q.type==='mc');
-    let mcScore  = 0;
-    const gradedMC = {};
-    mcQs.forEach(q => {
-      const submitted = String(mcAnswers[q.num]||'');
-      const correct   = String(q.answer);
-      const isCorrect = submitted === correct;
-      if (isCorrect) mcScore += Number(q.score);
-      gradedMC[q.num] = { submitted, correct, isCorrect, score: isCorrect?Number(q.score):0 };
+async function submitAnswers(){
+  const btn=document.getElementById('submit-btn');
+  btn.disabled=true;btn.textContent='제출 중...';
+  try{
+    const existing=await sbGet('submissions','?exam_id=eq.'+examData.exam_id+'&student_number=eq.'+studentInfo.studentNum+'&class_id=eq.'+examData.class_id);
+    if(existing&&existing.length){alert('이미 제출한 시험입니다. 선생님께 문의하세요.');btn.disabled=false;btn.textContent='답안 제출하기';return;}
+    const allQ=examData.allQuestions;
+    const mcQs=allQ.filter(q=>q.type==='mc');
+    let mcScore=0;const gradedMC={};
+    mcQs.forEach(q=>{
+      const submitted=String(mcAnswers[q.num]||'');
+      const correct=String(q.answer);
+      const isCorrect=submitted===correct;
+      if(isCorrect)mcScore+=Number(q.score);
+      gradedMC[q.num]={submitted,correct,isCorrect,score:isCorrect?Number(q.score):0};
     });
-    const mcTotal = mcQs.reduce((s,q)=>s+Number(q.score),0);
-    const submitId = 'SUB' + Date.now();
-
-    await sbPost('제출기록', {
-      제출ID: submitId, 시험ID: examData.시험ID, 시험제목: examData.시험제목,
-      반ID: examData.반ID, 반이름: examData.반이름,
-      학생번호: studentInfo.studentNum, 학생이름: studentInfo.studentName,
-      제출일시: new Date().toLocaleString('ko-KR'),
-      답안JSON: JSON.stringify({ mc: mcAnswers, essay: essayAnswers }),
-      객관식점수: mcScore, 서술형점수: 0, 합계점수: mcScore, 채점완료: 'N'
+    const mcTotal=mcQs.reduce((s,q)=>s+Number(q.score),0);
+    const submitId='SUB'+Date.now();
+    await sbPost('submissions',{
+      submit_id:submitId,exam_id:examData.exam_id,exam_title:examData.title,
+      class_id:examData.class_id,class_name:examData.class_name,
+      student_number:studentInfo.studentNum,student_name:studentInfo.studentName,
+      submitted_at:new Date().toLocaleString('ko-KR'),
+      answers_json:JSON.stringify({mc:mcAnswers,essay:essayAnswers}),
+      mc_score:mcScore,essay_score:0,total_score:mcScore,graded:'N'
     });
-
-    // 오답통계 업데이트
-    for (const [num, result] of Object.entries(gradedMC)) {
-      const existing = await sbGet('오답통계', `?시험ID=eq.${examData.시험ID}&문항번호=eq.${num}`);
-      if (existing.length) {
-        const total = existing[0].총제출수 + 1;
-        const wrong = existing[0].오답수 + (result.isCorrect?0:1);
-        await sbPatch('오답통계', { 총제출수: total, 오답수: wrong, 오답률: Math.round(wrong/total*100) }, `?시험ID=eq.${examData.시험ID}&문항번호=eq.${num}`);
-      } else {
-        await sbPost('오답통계', { 시험ID: examData.시험ID, 문항번호: Number(num), 총제출수: 1, 오답수: result.isCorrect?0:1, 오답률: result.isCorrect?0:100 });
+    // 오답통계
+    for(const[num,result]of Object.entries(gradedMC)){
+      const ex=await sbGet('item_stats','?exam_id=eq.'+examData.exam_id+'&item_number=eq.'+num);
+      if(ex&&ex.length){
+        const total=ex[0].total_count+1;
+        const wrong=ex[0].wrong_count+(result.isCorrect?0:1);
+        await sbPatch('item_stats',{total_count:total,wrong_count:wrong,wrong_pct:Math.round(wrong/total*100)},'?exam_id=eq.'+examData.exam_id+'&item_number=eq.'+num);
+      }else{
+        await sbPost('item_stats',{exam_id:examData.exam_id,item_number:Number(num),total_count:1,wrong_count:result.isCorrect?0:1,wrong_pct:result.isCorrect?0:100});
       }
     }
-
-    renderResult({ studentName: studentInfo.studentName, mcScore, mcTotal, gradedMC, hasEssay: allQ.some(q=>q.type==='essay') });
-  } catch(e) {
-    alert('제출 실패. 다시 시도해주세요.\n'+e.message);
-    btn.disabled=false; btn.textContent='답안 제출하기';
-  }
+    renderResult({studentName:studentInfo.studentName,mcScore,mcTotal,gradedMC,hasEssay:allQ.some(q=>q.type==='essay')});
+  }catch(e){alert('제출 실패. 다시 시도해주세요.\n'+e.message);btn.disabled=false;btn.textContent='답안 제출하기';}
 }
 
-function renderResult(data) {
-  document.getElementById('exam-screen').style.display   = 'none';
-  document.getElementById('result-screen').style.display = 'block';
-  document.getElementById('result-exam-title').textContent = examData.시험제목;
-  document.getElementById('result-name').textContent       = data.studentName + ' 학생';
-  document.getElementById('result-score').innerHTML        = `${data.mcScore}<span>/${data.mcTotal}점 (객관식)</span>`;
-  document.getElementById('result-sub').textContent        = `정답률 ${Math.round(data.mcScore/data.mcTotal*100)}%`;
-  const tbody = document.getElementById('result-body');
-  examData.questions.filter(q=>q.type==='mc').forEach(q => {
-    const g  = data.gradedMC[q.num];
-    const tr = document.createElement('tr');
-    const ox = g ? (g.isCorrect
-      ? `<span class="badge-o"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5"/></svg></span>`
-      : `<span class="badge-x"><svg width="14" height="14" viewBox="0 0 14 14"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></span>`)
-      : `<span class="badge-skip">미응답</span>`;
-    tr.innerHTML = `<td>${q.num}</td><td style="font-size:16px;">${g?g.correct:'—'}</td><td style="font-size:16px;color:${g&&!g.isCorrect?'#ef4444':'#374151'}">${g?(g.submitted||'—'):'—'}</td><td>${ox}</td>`;
+function renderResult(data){
+  document.getElementById('exam-screen').style.display='none';
+  document.getElementById('result-screen').style.display='block';
+  document.getElementById('result-exam-title').textContent=examData.title;
+  document.getElementById('result-name').textContent=data.studentName+' 학생';
+  document.getElementById('result-score').innerHTML=`${data.mcScore}<span>/${data.mcTotal}점 (객관식)</span>`;
+  document.getElementById('result-sub').textContent=`정답률 ${Math.round(data.mcScore/data.mcTotal*100)}%`;
+  const tbody=document.getElementById('result-body');
+  examData.questions.filter(q=>q.type==='mc').forEach(q=>{
+    const g=data.gradedMC[q.num];
+    const tr=document.createElement('tr');
+    const ox=g?(g.isCorrect?`<span class="badge-o"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5"/></svg></span>`:`<span class="badge-x"><svg width="14" height="14" viewBox="0 0 14 14"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></span>`):'<span class="badge-skip">미응답</span>';
+    tr.innerHTML=`<td>${q.num}</td><td style="font-size:16px;">${g?g.correct:'—'}</td><td style="font-size:16px;color:${g&&!g.isCorrect?'#ef4444':'#374151'}">${g?(g.submitted||'—'):'—'}</td><td>${ox}</td>`;
     tbody.appendChild(tr);
   });
-  if (data.hasEssay) document.getElementById('essay-notice').style.display = 'block';
+  if(data.hasEssay)document.getElementById('essay-notice').style.display='block';
   window.scrollTo(0,0);
 }
 
