@@ -288,8 +288,11 @@ async function api(params) {
   const res = await fetch(API_URL + '?' + new URLSearchParams(params));
   return res.json();
 }
+// CORS 우회: POST 대신 GET + body 파라미터로 전송
 async function apiPost(body) {
-  const res = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  const action = body.action;
+  const encoded = encodeURIComponent(JSON.stringify(body));
+  const res = await fetch(API_URL + '?action=' + action + '&body=' + encoded);
   return res.json();
 }
 
