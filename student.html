@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>답안 제출</title>
+<style>
+  /* ── 기본 ── */
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5f6fa;min-height:100vh;padding:0 0 60px;}
+
+  /* ── 헤더 ── */
+  .header{background:#fff;border-bottom:1px solid #e5e7eb;padding:14px 20px;position:sticky;top:0;z-index:10;}
+  .header-title{font-size:16px;font-weight:600;color:#111;}
+  .header-sub{font-size:12px;color:#6b7280;margin-top:2px;}
+
+  /* ── 카드 ── */
+  .card{background:#fff;border-radius:12px;padding:18px 20px;margin:12px 16px 0;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+
+  /* ── 학생 정보 입력 ── */
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .field label{display:block;font-size:12px;color:#6b7280;margin-bottom:5px;}
+  .field input{width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:15px;outline:none;transition:border .15s;}
+  .field input:focus{border-color:#3b82f6;}
+
+  /* ── 섹션 제목 ── */
+  .section-title{font-size:13px;font-weight:600;color:#6b7280;margin:20px 16px 0;letter-spacing:.04em;}
+
+  /* ── 문항 카드 ── */
+  .q-card{background:#fff;border-radius:12px;padding:16px 18px;margin:8px 16px 0;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .q-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .q-num{font-size:13px;font-weight:600;color:#374151;}
+  .q-score{font-size:11px;color:#9ca3af;background:#f3f4f6;padding:2px 8px;border-radius:10px;}
+  .tag-essay{font-size:11px;color:#3b82f6;background:#eff6ff;padding:2px 8px;border-radius:10px;}
+
+  /* ── 객관식 버튼 ── */
+  .choices{display:flex;gap:8px;flex-wrap:wrap;}
+  .choice{width:44px;height:44px;border-radius:50%;border:1.5px solid #e5e7eb;background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;color:#374151;}
+  .choice:hover{border-color:#93c5fd;color:#3b82f6;}
+  .choice.sel{border-color:#3b82f6;background:#3b82f6;color:#fff;}
+
+  /* ── 서술형 ── */
+  .essay-box{width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;min-height:80px;resize:vertical;outline:none;transition:border .15s;line-height:1.6;}
+  .essay-box:focus{border-color:#3b82f6;}
+
+  /* ── 제출 버튼 ── */
+  .submit-wrap{padding:20px 16px 0;}
+  .submit-btn{width:100%;padding:15px;background:#3b82f6;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;transition:background .15s;}
+  .submit-btn:hover{background:#2563eb;}
+  .submit-btn:disabled{background:#9ca3af;cursor:not-allowed;}
+
+  /* ── 로딩 ── */
+  .loading{text-align:center;padding:60px 20px;color:#6b7280;}
+  .spinner{width:36px;height:36px;border:3px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ── 에러 ── */
+  .error-box{background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:20px;margin:12px 16px;text-align:center;color:#dc2626;}
+
+  /* ── 결과 화면 ── */
+  #result-screen{display:none;}
+  .result-header{background:#fff;border-radius:12px;padding:24px 20px;margin:12px 16px 0;box-shadow:0 1px 3px rgba(0,0,0,.06);text-align:center;}
+  .result-name{font-size:15px;color:#6b7280;margin-bottom:4px;}
+  .result-score{font-size:48px;font-weight:700;color:#3b82f6;line-height:1;}
+  .result-score span{font-size:20px;font-weight:400;color:#9ca3af;}
+  .result-sub{font-size:13px;color:#9ca3af;margin-top:8px;}
+  .result-table{width:100%;border-collapse:collapse;margin-top:4px;}
+  .result-table th{padding:10px 14px;background:#f9fafb;font-size:12px;font-weight:600;color:#6b7280;text-align:center;border-bottom:1px solid #e5e7eb;}
+  .result-table td{padding:12px 14px;border-bottom:1px solid #f3f4f6;text-align:center;font-size:14px;}
+  .result-table tr:last-child td{border-bottom:none;}
+  .badge-o{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;border:2px solid #3b82f6;}
+  .badge-o svg{stroke:#3b82f6;fill:none;stroke-width:2.5;}
+  .badge-x{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;border:2px solid #ef4444;}
+  .badge-x svg{stroke:#ef4444;fill:none;stroke-width:2.5;}
+  .badge-skip{font-size:12px;color:#9ca3af;background:#f3f4f6;padding:3px 10px;border-radius:10px;}
+  .essay-notice{background:#eff6ff;border-radius:10px;padding:14px 16px;margin:12px 16px 0;font-size:13px;color:#3b82f6;line-height:1.6;}
+  .correct-mark{font-size:13px;color:#6b7280;}
+</style>
+</head>
+<body>
+
+<!-- 로딩 -->
+<div id="loading-screen">
+  <div style="padding:60px 20px;text-align:center;">
+    <div class="spinner"></div>
+    <div style="font-size:14px;color:#6b7280;">시험 정보를 불러오는 중...</div>
+  </div>
+</div>
+
+<!-- 에러 -->
+<div id="error-screen" style="display:none;">
+  <div class="error-box" id="error-msg">오류가 발생했습니다.</div>
+</div>
+
+<!-- 답안 제출 화면 -->
+<div id="exam-screen" style="display:none;">
+  <div class="header">
+    <div class="header-title" id="exam-title">—</div>
+    <div class="header-sub" id="exam-class">—</div>
+  </div>
+
+  <div class="card">
+    <div class="info-grid">
+      <div class="field">
+        <label>이름</label>
+        <input type="text" id="student-name" placeholder="홍길동">
+      </div>
+      <div class="field">
+        <label>출석번호</label>
+        <input type="number" id="student-num" placeholder="15">
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title" id="mc-section-title" style="display:none;">객관식 답안</div>
+  <div id="mc-questions"></div>
+
+  <div class="section-title" id="essay-section-title" style="display:none;">서술형 답안</div>
+  <div id="essay-questions"></div>
+
+  <div class="submit-wrap">
+    <button class="submit-btn" onclick="submitAnswers()">답안 제출하기</button>
+  </div>
+</div>
+
+<!-- 결과 화면 -->
+<div id="result-screen">
+  <div class="header">
+    <div class="header-title">채점 결과</div>
+    <div class="header-sub" id="result-exam-title">—</div>
+  </div>
+
+  <div class="result-header">
+    <div class="result-name" id="result-name">—</div>
+    <div class="result-score" id="result-score">—<span>점</span></div>
+    <div class="result-sub" id="result-sub">—</div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table class="result-table">
+      <thead>
+        <tr>
+          <th>번호</th>
+          <th>정답</th>
+          <th>내 답안</th>
+          <th>채점</th>
+        </tr>
+      </thead>
+      <tbody id="result-body"></tbody>
+    </table>
+  </div>
+
+  <div class="essay-notice" id="essay-notice" style="display:none;">
+    📝 서술형 답안은 선생님이 확인 후 점수를 입력해드립니다.
+  </div>
+</div>
+
+<script>
+// ── 설정: 반드시 본인 Apps Script Web App URL로 교체 ──
+const API_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
+
+const CHOICES = ['①','②','③','④','⑤'];
+let examData  = null;
+const mcAnswers    = {};
+const essayAnswers = {};
+
+// ── URL에서 examId 파싱 ──
+function getExamId() {
+  return new URLSearchParams(location.search).get('examId');
+}
+
+// ── API 호출 ──
+async function api(params) {
+  const url = API_URL + '?' + new URLSearchParams(params);
+  const res = await fetch(url);
+  return res.json();
+}
+async function apiPost(body) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+// ── 에러 표시 ──
+function showError(msg) {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('exam-screen').style.display   = 'none';
+  document.getElementById('error-screen').style.display  = 'block';
+  document.getElementById('error-msg').textContent = msg;
+}
+
+// ── 시험 로드 ──
+async function loadExam() {
+  const examId = getExamId();
+  if (!examId) { showError('QR코드가 올바르지 않습니다. (examId 없음)'); return; }
+
+  try {
+    const result = await api({ action: 'getExam', examId });
+    if (!result.success) { showError(result.error); return; }
+
+    examData = result.data;
+    renderExam();
+  } catch(e) {
+    showError('서버 연결에 실패했습니다. 인터넷 연결을 확인해주세요.');
+  }
+}
+
+// ── 시험 화면 렌더링 ──
+function renderExam() {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('exam-screen').style.display   = 'block';
+
+  document.getElementById('exam-title').textContent = examData.title;
+  document.getElementById('exam-class').textContent = examData.className + ' · ' + examData.date;
+
+  const mcQs    = examData.questions.filter(q => q.type === 'mc');
+  const essayQs = examData.questions.filter(q => q.type === 'essay');
+
+  // 객관식
+  if (mcQs.length > 0) {
+    document.getElementById('mc-section-title').style.display = 'block';
+    const wrap = document.getElementById('mc-questions');
+    mcQs.forEach(q => {
+      const card = document.createElement('div');
+      card.className = 'q-card';
+      card.innerHTML = `
+        <div class="q-head">
+          <span class="q-num">${q.num}번</span>
+          <span class="q-score">${q.score}점</span>
+        </div>
+        <div class="choices" id="choices-${q.num}"></div>`;
+      wrap.appendChild(card);
+      const choicesEl = card.querySelector(`#choices-${q.num}`);
+      CHOICES.forEach((label, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'choice';
+        btn.textContent = label;
+        btn.onclick = () => {
+          choicesEl.querySelectorAll('.choice').forEach(b => b.classList.remove('sel'));
+          btn.classList.add('sel');
+          mcAnswers[q.num] = label;
+        };
+        choicesEl.appendChild(btn);
+      });
+    });
+  }
+
+  // 서술형
+  if (essayQs.length > 0) {
+    document.getElementById('essay-section-title').style.display = 'block';
+    const wrap = document.getElementById('essay-questions');
+    essayQs.forEach(q => {
+      const card = document.createElement('div');
+      card.className = 'q-card';
+      card.innerHTML = `
+        <div class="q-head">
+          <span class="q-num">${q.num}번</span>
+          <span class="q-score">${q.score}점</span>
+          <span class="tag-essay">서술형 — 선생님 채점</span>
+        </div>
+        <textarea class="essay-box" id="essay-${q.num}" placeholder="풀이 과정과 답을 써주세요..."></textarea>`;
+      wrap.appendChild(card);
+      card.querySelector(`#essay-${q.num}`).addEventListener('input', e => {
+        essayAnswers[q.num] = e.target.value;
+      });
+    });
+  }
+}
+
+// ── 답안 제출 ──
+async function submitAnswers() {
+  const name = document.getElementById('student-name').value.trim();
+  const num  = document.getElementById('student-num').value.trim();
+  if (!name || !num) { alert('이름과 출석번호를 입력해주세요.'); return; }
+
+  const btn = document.querySelector('.submit-btn');
+  btn.disabled = true;
+  btn.textContent = '제출 중...';
+
+  try {
+    const result = await apiPost({
+      action: 'submitAnswer',
+      examId: examData.examId,
+      studentName: name,
+      studentNum: num,
+      mcAnswers,
+      essayAnswers
+    });
+
+    if (!result.success) { alert(result.error); btn.disabled = false; btn.textContent = '답안 제출하기'; return; }
+    renderResult(result.data);
+  } catch(e) {
+    alert('제출에 실패했습니다. 다시 시도해주세요.');
+    btn.disabled = false;
+    btn.textContent = '답안 제출하기';
+  }
+}
+
+// ── 결과 화면 ──
+function renderResult(data) {
+  document.getElementById('exam-screen').style.display   = 'none';
+  document.getElementById('result-screen').style.display = 'block';
+
+  document.getElementById('result-exam-title').textContent = examData.title;
+  document.getElementById('result-name').textContent = data.studentName + ' 학생';
+  document.getElementById('result-score').innerHTML  = `${data.mcScore}<span>/${data.mcTotal}점 (객관식)</span>`;
+  document.getElementById('result-sub').textContent  = `객관식 정답률 ${Math.round(data.mcScore/data.mcTotal*100)}%`;
+
+  const tbody = document.getElementById('result-body');
+  const mcQs  = examData.questions.filter(q => q.type === 'mc');
+  mcQs.forEach(q => {
+    const g   = data.gradedMC[q.num];
+    const tr  = document.createElement('tr');
+    const oxEl = g
+      ? (g.isCorrect
+          ? `<span class="badge-o"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" stroke-width="2"/></svg></span>`
+          : `<span class="badge-x"><svg width="14" height="14" viewBox="0 0 14 14"><line x1="3" y1="3" x2="11" y2="11" stroke-width="2"/><line x1="11" y1="3" x2="3" y2="11" stroke-width="2"/></svg></span>`)
+      : `<span class="badge-skip">미응답</span>`;
+    tr.innerHTML = `
+      <td>${q.num}</td>
+      <td style="font-size:16px;">${g ? g.correct : '—'}</td>
+      <td style="font-size:16px;color:${g&&!g.isCorrect?'#ef4444':'#374151'}">${g ? (g.submitted||'—') : '—'}</td>
+      <td>${oxEl}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  if (data.hasEssay) {
+    document.getElementById('essay-notice').style.display = 'block';
+  }
+
+  window.scrollTo(0, 0);
+}
+
+// ── 시작 ──
+loadExam();
+</script>
+</body>
+</html>
