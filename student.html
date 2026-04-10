@@ -35,8 +35,6 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 .spinner{width:36px;height:36px;border:3px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .error-box{background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:20px;margin:12px 16px;text-align:center;color:#dc2626;line-height:1.6;}
-
-/* 학생 인증 화면 */
 .verify-wrap{padding:32px 20px;text-align:center;}
 .verify-icon{font-size:48px;margin-bottom:12px;}
 .verify-title{font-size:18px;font-weight:700;color:#111;margin-bottom:6px;}
@@ -44,15 +42,13 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 .verify-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.06);text-align:left;margin-bottom:12px;}
 .manual-row{display:flex;gap:8px;align-items:flex-end;}
 .manual-row .field{flex:1;}
-
-/* 결과 화면 */
 #result-screen{display:none;}
 .result-header{background:#fff;border-radius:12px;padding:24px 20px;margin:12px 16px 0;box-shadow:0 1px 3px rgba(0,0,0,.06);text-align:center;}
 .result-name{font-size:15px;color:#6b7280;margin-bottom:4px;}
 .result-score{font-size:48px;font-weight:700;color:#3b82f6;line-height:1;}
 .result-score span{font-size:20px;font-weight:400;color:#9ca3af;}
 .result-sub{font-size:13px;color:#9ca3af;margin-top:8px;}
-.result-tbl{width:100%;border-collapse:collapse;margin-top:4px;}
+.result-tbl{width:100%;border-collapse:collapse;}
 .result-tbl th{padding:10px 14px;background:#f9fafb;font-size:12px;font-weight:600;color:#6b7280;text-align:center;border-bottom:1px solid #e5e7eb;}
 .result-tbl td{padding:12px 14px;border-bottom:1px solid #f3f4f6;text-align:center;font-size:14px;}
 .result-tbl tr:last-child td{border-bottom:none;}
@@ -66,21 +62,15 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 </style>
 </head>
 <body>
-
-<!-- 로딩 -->
 <div id="loading-screen">
   <div style="padding:60px 20px;text-align:center;">
     <div class="spinner"></div>
     <div style="font-size:14px;color:#6b7280;">불러오는 중...</div>
   </div>
 </div>
-
-<!-- 에러 -->
 <div id="error-screen" style="display:none;">
   <div class="error-box" id="error-msg"></div>
 </div>
-
-<!-- 학생 인증 화면 (URL에 studentNum 없을 때) -->
 <div id="verify-screen" style="display:none;">
   <div class="header">
     <div class="header-title" id="verify-exam-title">—</div>
@@ -89,58 +79,36 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
   <div class="verify-wrap">
     <div class="verify-icon">👤</div>
     <div class="verify-title">학생 확인</div>
-    <div class="verify-sub">선생님께 받은 <strong>학생 QR카드</strong>를 스캔하거나<br>번호와 이름을 직접 입력하세요.</div>
-
+    <div class="verify-sub">번호와 이름을 입력하세요.</div>
     <div class="verify-card">
-      <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:12px;">직접 입력</div>
       <div class="manual-row">
-        <div class="field">
-          <label>출석번호</label>
-          <input type="number" id="manual-num" placeholder="예) 15">
-        </div>
-        <div class="field">
-          <label>이름</label>
-          <input type="text" id="manual-name" placeholder="홍길동">
-        </div>
+        <div class="field"><label>출석번호</label><input type="number" id="manual-num" placeholder="예) 15"></div>
+        <div class="field"><label>이름</label><input type="text" id="manual-name" placeholder="홍길동"></div>
         <button onclick="manualVerify()" style="padding:10px 16px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">확인</button>
       </div>
     </div>
   </div>
 </div>
-
-<!-- 답안 제출 화면 -->
 <div id="exam-screen" style="display:none;">
   <div class="header">
     <div class="header-title" id="exam-title">—</div>
     <div class="header-sub" id="exam-class">—</div>
   </div>
-
   <div class="card">
-    <div class="verified-badge" id="verified-badge">✓ — 확인됨</div>
+    <div class="verified-badge" id="verified-badge">✓ 확인됨</div>
     <div class="info-grid">
-      <div class="field">
-        <label>이름</label>
-        <input type="text" id="student-name" readonly disabled>
-      </div>
-      <div class="field">
-        <label>번호</label>
-        <input type="text" id="student-num" readonly disabled>
-      </div>
+      <div class="field"><label>이름</label><input type="text" id="student-name" readonly disabled></div>
+      <div class="field"><label>번호</label><input type="text" id="student-num" readonly disabled></div>
     </div>
   </div>
-
   <div class="section-title" id="mc-section-title" style="display:none;">객관식 답안</div>
   <div id="mc-questions"></div>
-
   <div class="section-title" id="essay-section-title" style="display:none;">서술형 답안</div>
   <div id="essay-questions"></div>
-
   <div class="submit-wrap">
     <button class="submit-btn" id="submit-btn" onclick="submitAnswers()">답안 제출하기</button>
   </div>
 </div>
-
-<!-- 결과 화면 -->
 <div id="result-screen">
   <div class="header">
     <div class="header-title">채점 결과</div>
@@ -157,100 +125,96 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
       <tbody id="result-body"></tbody>
     </table>
   </div>
-  <div class="essay-notice" id="essay-notice" style="display:none;">
-    📝 서술형 답안은 선생님이 확인 후 점수를 입력해드립니다.
-  </div>
+  <div class="essay-notice" id="essay-notice" style="display:none;">📝 서술형 답안은 선생님이 확인 후 점수를 입력해드립니다.</div>
 </div>
 
 <script>
-const API_URL  = 'https://script.google.com/macros/s/AKfycbwhan_ULP01aGPgxoPjz6N0Xj-i3BOmx390ZuA92Be7GgSoikA3FLBIKwAXFb3Qg5W2jA/exec';
-const CHOICES  = ['①','②','③','④','⑤'];
+const SB_URL  = 'https://vvbanjdioahaaqamibbh.supabase.co';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2YmFuamRpb2FoYWFxYW1pYmJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzAzOTYsImV4cCI6MjA5MTQwNjM5Nn0.gKFDN93mmaKhVH-Quw69bZl9AYaVp_b4aJ02oT9C-Bc';
+const CHOICES = ['①','②','③','④','⑤'];
 
-let examData      = null;
-let studentInfo   = null; // { classId, studentNum, studentName }
-const mcAnswers   = {};
-const essayAnswers= {};
+let examData    = null;
+let studentInfo = null;
+const mcAnswers    = {};
+const essayAnswers = {};
 
-function params() { return new URLSearchParams(location.search); }
-
-async function api(p) {
-  const res = await fetch(API_URL + '?' + new URLSearchParams(p));
+async function sbGet(table, query='') {
+  const res = await fetch(`${SB_URL}/rest/v1/${table}${query}`, {
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY }
+  });
   return res.json();
 }
-// CORS 우회: POST 대신 GET + body 파라미터로 전송
-async function apiPost(body) {
-  const action = body.action;
-  const encoded = encodeURIComponent(JSON.stringify(body));
-  const res = await fetch(API_URL + '?action=' + action + '&body=' + encoded);
+async function sbPost(table, body) {
+  const res = await fetch(`${SB_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+    body: JSON.stringify(body)
+  });
   return res.json();
+}
+async function sbPatch(table, body, query) {
+  await fetch(`${SB_URL}/rest/v1/${table}${query}`, {
+    method: 'PATCH',
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
 }
 
 function showError(msg) {
-  document.getElementById('loading-screen').style.display  = 'none';
-  document.getElementById('verify-screen').style.display   = 'none';
-  document.getElementById('exam-screen').style.display     = 'none';
-  document.getElementById('error-screen').style.display    = 'block';
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('verify-screen').style.display  = 'none';
+  document.getElementById('exam-screen').style.display    = 'none';
+  document.getElementById('error-screen').style.display   = 'block';
   document.getElementById('error-msg').innerHTML = msg;
 }
 
-// ── 시작: URL 파라미터 분석 ──
 async function init() {
-  const p         = params();
-  const examId    = p.get('examId');
-  const studentQR = p.get('s'); // 학생 QR 스캔 시 전달되는 JSON (base64)
-
+  const p      = new URLSearchParams(location.search);
+  const examId = p.get('examId');
+  const sq     = p.get('s');
   if (!examId) { showError('QR코드가 올바르지 않습니다.<br>시험지의 QR코드를 다시 스캔해주세요.'); return; }
 
-  // 시험 정보 로드
   try {
-    const res = await api({ action:'getExam', examId });
-    if (!res.success) { showError(res.error); return; }
-    examData = res.data;
-  } catch(e) {
-    showError('서버 연결 실패. 인터넷 연결을 확인해주세요.');
-    return;
-  }
+    const exams = await sbGet('시험목록', `?시험ID=eq.${examId}`);
+    if (!exams.length) { showError('시험을 찾을 수 없습니다.'); return; }
+    if (exams[0].활성화 !== 'Y') { showError('마감된 시험입니다. 선생님께 문의하세요.'); return; }
+    examData = { ...exams[0], questions: JSON.parse(exams[0].답안JSON).map(q=>({num:q.num,type:q.type,score:q.score})), allQuestions: JSON.parse(exams[0].답안JSON) };
+  } catch(e) { showError('서버 연결 실패. 인터넷을 확인해주세요.'); return; }
 
-  // 학생 QR 파라미터가 있으면 자동 인증
-  if (studentQR) {
+  if (sq) {
     try {
-      const info = JSON.parse(atob(studentQR));
+      const info = JSON.parse(atob(sq));
       studentInfo = { classId: info.classId, studentNum: String(info.studentNum), studentName: info.studentName };
       document.getElementById('loading-screen').style.display = 'none';
-      showExamScreen();
-      return;
-    } catch(e) { /* 실패하면 수동 입력으로 fallback */ }
+      showExamScreen(); return;
+    } catch(e) {}
   }
 
-  // 수동 입력 화면
-  document.getElementById('loading-screen').style.display = 'none';
-  document.getElementById('verify-exam-title').textContent = examData.title;
-  document.getElementById('verify-exam-class').textContent = examData.className + ' · ' + examData.date;
-  document.getElementById('verify-screen').style.display   = 'block';
+  document.getElementById('loading-screen').style.display    = 'none';
+  document.getElementById('verify-exam-title').textContent   = examData.시험제목;
+  document.getElementById('verify-exam-class').textContent   = examData.반이름 + ' · ' + (examData.시험일||'');
+  document.getElementById('verify-screen').style.display     = 'block';
 }
 
-// ── 수동 인증 ──
-async function manualVerify() {
+function manualVerify() {
   const num  = document.getElementById('manual-num').value.trim();
   const name = document.getElementById('manual-name').value.trim();
   if (!num || !name) { alert('번호와 이름을 모두 입력해주세요.'); return; }
-
-  studentInfo = { classId: examData.classId, studentNum: num, studentName: name };
+  studentInfo = { classId: examData.반ID, studentNum: num, studentName: name };
   document.getElementById('verify-screen').style.display = 'none';
   showExamScreen();
 }
 
-// ── 시험 화면 렌더링 ──
 function showExamScreen() {
   document.getElementById('exam-screen').style.display = 'block';
-  document.getElementById('exam-title').textContent    = examData.title;
-  document.getElementById('exam-class').textContent    = examData.className + ' · ' + examData.date;
+  document.getElementById('exam-title').textContent    = examData.시험제목;
+  document.getElementById('exam-class').textContent    = examData.반이름 + ' · ' + (examData.시험일||'');
   document.getElementById('verified-badge').textContent = '✓  ' + studentInfo.studentName + ' 학생 확인됨';
   document.getElementById('student-name').value = studentInfo.studentName;
   document.getElementById('student-num').value  = studentInfo.studentNum + '번';
 
-  const mcQs    = examData.questions.filter(q => q.type === 'mc');
-  const essayQs = examData.questions.filter(q => q.type === 'essay');
+  const mcQs    = examData.questions.filter(q=>q.type==='mc');
+  const essayQs = examData.questions.filter(q=>q.type==='essay');
 
   if (mcQs.length) {
     document.getElementById('mc-section-title').style.display = 'block';
@@ -258,92 +222,98 @@ function showExamScreen() {
     mcQs.forEach(q => {
       const card = document.createElement('div');
       card.className = 'q-card';
-      card.innerHTML = `<div class="q-head"><span class="q-num">${q.num}번</span><span class="q-score">${q.score}점</span></div>
-        <div class="choices" id="ch-${q.num}"></div>`;
+      card.innerHTML = `<div class="q-head"><span class="q-num">${q.num}번</span><span class="q-score">${q.score}점</span></div><div class="choices" id="ch-${q.num}"></div>`;
       wrap.appendChild(card);
-      const cEl = card.querySelector('#ch-' + q.num);
+      const cEl = card.querySelector('#ch-'+q.num);
       CHOICES.forEach(label => {
         const btn = document.createElement('button');
-        btn.className = 'choice';
-        btn.textContent = label;
-        btn.onclick = () => {
-          cEl.querySelectorAll('.choice').forEach(b => b.classList.remove('sel'));
-          btn.classList.add('sel');
-          mcAnswers[q.num] = label;
-        };
+        btn.className = 'choice'; btn.textContent = label;
+        btn.onclick = () => { cEl.querySelectorAll('.choice').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); mcAnswers[q.num]=label; };
         cEl.appendChild(btn);
       });
     });
   }
-
   if (essayQs.length) {
     document.getElementById('essay-section-title').style.display = 'block';
     const wrap = document.getElementById('essay-questions');
     essayQs.forEach(q => {
       const card = document.createElement('div');
       card.className = 'q-card';
-      card.innerHTML = `<div class="q-head"><span class="q-num">${q.num}번</span><span class="q-score">${q.score}점</span><span class="tag-essay">서술형 — 선생님 채점</span></div>
-        <textarea class="essay-box" id="ess-${q.num}" placeholder="풀이 과정과 답을 써주세요..."></textarea>`;
+      card.innerHTML = `<div class="q-head"><span class="q-num">${q.num}번</span><span class="q-score">${q.score}점</span><span class="tag-essay">서술형 — 선생님 채점</span></div><textarea class="essay-box" id="ess-${q.num}" placeholder="풀이 과정과 답을 써주세요..."></textarea>`;
       wrap.appendChild(card);
-      card.querySelector('#ess-' + q.num).addEventListener('input', e => { essayAnswers[q.num] = e.target.value; });
+      card.querySelector('#ess-'+q.num).addEventListener('input', e=>{ essayAnswers[q.num]=e.target.value; });
     });
   }
 }
 
-// ── 답안 제출 ──
 async function submitAnswers() {
   const btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = '제출 중...';
-
   try {
-    const res = await apiPost({
-      action: 'submitAnswer',
-      examId: examData.examId,
-      studentName: studentInfo.studentName,
-      studentNum:  studentInfo.studentNum,
-      mcAnswers,
-      essayAnswers
+    // 중복 체크
+    const existing = await sbGet('제출기록', `?시험ID=eq.${examData.시험ID}&학생번호=eq.${studentInfo.studentNum}&반ID=eq.${examData.반ID}`);
+    if (existing.length) { alert('이미 제출한 시험입니다. 선생님께 문의하세요.'); btn.disabled=false; btn.textContent='답안 제출하기'; return; }
+
+    const allQ   = examData.allQuestions;
+    const mcQs   = allQ.filter(q=>q.type==='mc');
+    let mcScore  = 0;
+    const gradedMC = {};
+    mcQs.forEach(q => {
+      const submitted = String(mcAnswers[q.num]||'');
+      const correct   = String(q.answer);
+      const isCorrect = submitted === correct;
+      if (isCorrect) mcScore += Number(q.score);
+      gradedMC[q.num] = { submitted, correct, isCorrect, score: isCorrect?Number(q.score):0 };
+    });
+    const mcTotal = mcQs.reduce((s,q)=>s+Number(q.score),0);
+    const submitId = 'SUB' + Date.now();
+
+    await sbPost('제출기록', {
+      제출ID: submitId, 시험ID: examData.시험ID, 시험제목: examData.시험제목,
+      반ID: examData.반ID, 반이름: examData.반이름,
+      학생번호: studentInfo.studentNum, 학생이름: studentInfo.studentName,
+      제출일시: new Date().toLocaleString('ko-KR'),
+      답안JSON: JSON.stringify({ mc: mcAnswers, essay: essayAnswers }),
+      객관식점수: mcScore, 서술형점수: 0, 합계점수: mcScore, 채점완료: 'N'
     });
 
-    if (!res.success) {
-      alert(res.error);
-      btn.disabled = false; btn.textContent = '답안 제출하기';
-      return;
+    // 오답통계 업데이트
+    for (const [num, result] of Object.entries(gradedMC)) {
+      const existing = await sbGet('오답통계', `?시험ID=eq.${examData.시험ID}&문항번호=eq.${num}`);
+      if (existing.length) {
+        const total = existing[0].총제출수 + 1;
+        const wrong = existing[0].오답수 + (result.isCorrect?0:1);
+        await sbPatch('오답통계', { 총제출수: total, 오답수: wrong, 오답률: Math.round(wrong/total*100) }, `?시험ID=eq.${examData.시험ID}&문항번호=eq.${num}`);
+      } else {
+        await sbPost('오답통계', { 시험ID: examData.시험ID, 문항번호: Number(num), 총제출수: 1, 오답수: result.isCorrect?0:1, 오답률: result.isCorrect?0:100 });
+      }
     }
-    renderResult(res.data);
+
+    renderResult({ studentName: studentInfo.studentName, mcScore, mcTotal, gradedMC, hasEssay: allQ.some(q=>q.type==='essay') });
   } catch(e) {
-    alert('제출 실패. 다시 시도해주세요.');
-    btn.disabled = false; btn.textContent = '답안 제출하기';
+    alert('제출 실패. 다시 시도해주세요.\n'+e.message);
+    btn.disabled=false; btn.textContent='답안 제출하기';
   }
 }
 
-// ── 결과 화면 ──
 function renderResult(data) {
   document.getElementById('exam-screen').style.display   = 'none';
   document.getElementById('result-screen').style.display = 'block';
-
-  document.getElementById('result-exam-title').textContent = examData.title;
+  document.getElementById('result-exam-title').textContent = examData.시험제목;
   document.getElementById('result-name').textContent       = data.studentName + ' 학생';
   document.getElementById('result-score').innerHTML        = `${data.mcScore}<span>/${data.mcTotal}점 (객관식)</span>`;
   document.getElementById('result-sub').textContent        = `정답률 ${Math.round(data.mcScore/data.mcTotal*100)}%`;
-
   const tbody = document.getElementById('result-body');
-  examData.questions.filter(q => q.type==='mc').forEach(q => {
+  examData.questions.filter(q=>q.type==='mc').forEach(q => {
     const g  = data.gradedMC[q.num];
     const tr = document.createElement('tr');
-    const ox = g
-      ? (g.isCorrect
-          ? `<span class="badge-o"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5"/></svg></span>`
-          : `<span class="badge-x"><svg width="14" height="14" viewBox="0 0 14 14"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></span>`)
+    const ox = g ? (g.isCorrect
+      ? `<span class="badge-o"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5"/></svg></span>`
+      : `<span class="badge-x"><svg width="14" height="14" viewBox="0 0 14 14"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></span>`)
       : `<span class="badge-skip">미응답</span>`;
-    tr.innerHTML = `
-      <td>${q.num}</td>
-      <td style="font-size:16px;">${g?g.correct:'—'}</td>
-      <td style="font-size:16px;color:${g&&!g.isCorrect?'#ef4444':'#374151'}">${g?(g.submitted||'—'):'—'}</td>
-      <td>${ox}</td>`;
+    tr.innerHTML = `<td>${q.num}</td><td style="font-size:16px;">${g?g.correct:'—'}</td><td style="font-size:16px;color:${g&&!g.isCorrect?'#ef4444':'#374151'}">${g?(g.submitted||'—'):'—'}</td><td>${ox}</td>`;
     tbody.appendChild(tr);
   });
-
   if (data.hasEssay) document.getElementById('essay-notice').style.display = 'block';
   window.scrollTo(0,0);
 }
