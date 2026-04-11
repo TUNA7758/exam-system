@@ -34,14 +34,14 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 .submit-btn:disabled{background:#9ca3af;cursor:not-allowed;}
 .spinner{width:36px;height:36px;border:3px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.error-box{background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:20px;margin:12px 16px;text-align:center;color:#dc2626;line-height:1.6;}
+.error-box{background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:20px;margin:12px 16px;text-align:center;color:#dc2626;line-height:1.8;font-size:14px;}
 .verify-wrap{padding:32px 20px;text-align:center;}
 .verify-icon{font-size:48px;margin-bottom:12px;}
 .verify-title{font-size:18px;font-weight:700;color:#111;margin-bottom:6px;}
 .verify-sub{font-size:13px;color:#6b7280;margin-bottom:24px;line-height:1.6;}
-.verify-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.06);text-align:left;margin-bottom:12px;}
-.manual-row{display:flex;gap:8px;align-items:flex-end;}
-.manual-row .field{flex:1;}
+.verify-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.06);text-align:left;}
+.verify-row{display:flex;gap:8px;align-items:flex-end;}
+.verify-row .field{flex:1;}
 #result-screen{display:none;}
 .result-header{background:#fff;border-radius:12px;padding:24px 20px;margin:12px 16px 0;box-shadow:0 1px 3px rgba(0,0,0,.06);text-align:center;}
 .result-name{font-size:15px;color:#6b7280;margin-bottom:4px;}
@@ -62,41 +62,55 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 </style>
 </head>
 <body>
+
 <div id="loading-screen">
   <div style="padding:60px 20px;text-align:center;">
     <div class="spinner"></div>
     <div style="font-size:14px;color:#6b7280;">불러오는 중...</div>
   </div>
 </div>
-<div id="error-screen" style="display:none;"><div class="error-box" id="error-msg"></div></div>
+
+<div id="error-screen" style="display:none;">
+  <div class="error-box" id="error-msg"></div>
+</div>
+
+<!-- 학생 확인 화면 -->
 <div id="verify-screen" style="display:none;">
   <div class="header">
     <div class="header-title" id="verify-exam-title">—</div>
-    <div class="header-sub" id="verify-exam-class">—</div>
+    <div class="header-sub">답안 제출</div>
   </div>
   <div class="verify-wrap">
-    <div class="verify-icon">👤</div>
+    <div class="verify-icon">📝</div>
     <div class="verify-title">학생 확인</div>
-    <div class="verify-sub">번호와 이름을 입력하세요.</div>
+    <div class="verify-sub">출석번호와 이름을 입력해주세요.<br>명단에 등록된 학생만 제출할 수 있습니다.</div>
     <div class="verify-card">
-      <div class="manual-row">
-        <div class="field"><label>출석번호</label><input type="number" id="manual-num" placeholder="예) 15"></div>
-        <div class="field"><label>이름</label><input type="text" id="manual-name" placeholder="홍길동"></div>
-        <button onclick="manualVerify()" style="padding:10px 16px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">확인</button>
+      <div class="verify-row">
+        <div class="field">
+          <label>출석번호</label>
+          <input type="number" id="manual-num" placeholder="예) 15">
+        </div>
+        <div class="field">
+          <label>이름</label>
+          <input type="text" id="manual-name" placeholder="홍길동">
+        </div>
+        <button onclick="verifyStudent()" style="padding:10px 16px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;margin-bottom:1px;">확인</button>
       </div>
     </div>
   </div>
 </div>
+
+<!-- 답안 제출 화면 -->
 <div id="exam-screen" style="display:none;">
   <div class="header">
     <div class="header-title" id="exam-title">—</div>
-    <div class="header-sub" id="exam-class">—</div>
+    <div class="header-sub" id="exam-sub">—</div>
   </div>
   <div class="card">
     <div class="verified-badge" id="verified-badge">✓ 확인됨</div>
     <div class="info-grid">
       <div class="field"><label>이름</label><input type="text" id="student-name" readonly disabled></div>
-      <div class="field"><label>번호</label><input type="text" id="student-num" readonly disabled></div>
+      <div class="field"><label>번호 / 반</label><input type="text" id="student-info" readonly disabled></div>
     </div>
   </div>
   <div class="section-title" id="mc-section-title" style="display:none;">객관식 답안</div>
@@ -107,6 +121,8 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
     <button class="submit-btn" id="submit-btn" onclick="submitAnswers()">답안 제출하기</button>
   </div>
 </div>
+
+<!-- 결과 화면 -->
 <div id="result-screen">
   <div class="header">
     <div class="header-title">채점 결과</div>
@@ -123,15 +139,18 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
       <tbody id="result-body"></tbody>
     </table>
   </div>
-  <div class="essay-notice" id="essay-notice" style="display:none;">📝 서술형 답안은 선생님이 확인 후 점수를 입력해드립니다.</div>
+  <div class="essay-notice" id="essay-notice" style="display:none;">
+    📝 서술형 답안은 선생님이 확인 후 점수를 입력해드립니다.
+  </div>
 </div>
+
 <script>
 const SB_URL='https://vvbanjdioahaaqamibbh.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2YmFuamRpb2FoYWFxYW1pYmJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzAzOTYsImV4cCI6MjA5MTQwNjM5Nn0.gKFDN93mmaKhVH-Quw69bZl9AYaVp_b4aJ02oT9C-Bc';
 const CHOICES=['①','②','③','④','⑤'];
 const H={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
 
-let examData=null,studentInfo=null;
+let examData=null,studentData=null;
 const mcAnswers={},essayAnswers={};
 
 async function sbGet(t,q=''){const r=await fetch(SB_URL+'/rest/v1/'+t+q,{headers:H});return r.json();}
@@ -139,9 +158,7 @@ async function sbPost(t,b){const r=await fetch(SB_URL+'/rest/v1/'+t,{method:'POS
 async function sbPatch(t,b,q){await fetch(SB_URL+'/rest/v1/'+t+q,{method:'PATCH',headers:H,body:JSON.stringify(b)});}
 
 function showError(msg){
-  document.getElementById('loading-screen').style.display='none';
-  document.getElementById('verify-screen').style.display='none';
-  document.getElementById('exam-screen').style.display='none';
+  ['loading-screen','verify-screen','exam-screen'].forEach(id=>document.getElementById(id).style.display='none');
   document.getElementById('error-screen').style.display='block';
   document.getElementById('error-msg').innerHTML=msg;
 }
@@ -149,35 +166,40 @@ function showError(msg){
 async function init(){
   const p=new URLSearchParams(location.search);
   const examId=p.get('examId');
-  const sq=p.get('s');
   if(!examId){showError('QR코드가 올바르지 않습니다.<br>시험지의 QR코드를 다시 스캔해주세요.');return;}
   try{
     const exams=await sbGet('exams','?exam_id=eq.'+examId);
     if(!exams||!exams.length){showError('시험을 찾을 수 없습니다.');return;}
-    if(exams[0].active!=='Y'){showError('마감된 시험입니다. 선생님께 문의하세요.');return;}
-    const allQuestions=JSON.parse(exams[0].questions_json);
-    examData={...exams[0],questions:allQuestions.map(q=>({num:q.num,type:q.type,score:q.score})),allQuestions};
+    if(exams[0].active!=='Y'){showError('마감된 시험입니다.<br>선생님께 문의하세요.');return;}
+    const allQ=JSON.parse(exams[0].questions_json);
+    examData={...exams[0],allQuestions:allQ,questions:allQ.map(q=>({num:q.num,type:q.type,score:q.score}))};
   }catch(e){showError('서버 연결 실패. 인터넷을 확인해주세요.');return;}
-
-  if(sq){
-    try{
-      const info=JSON.parse(atob(sq));
-      studentInfo={classId:info.classId,studentNum:String(info.studentNum),studentName:info.studentName};
-      document.getElementById('loading-screen').style.display='none';
-      showExamScreen();return;
-    }catch(e){}
-  }
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('verify-exam-title').textContent=examData.title;
-  document.getElementById('verify-exam-class').textContent=(examData.class_name||'')+(examData.exam_date?' · '+examData.exam_date:'');
   document.getElementById('verify-screen').style.display='block';
 }
 
-function manualVerify(){
+async function verifyStudent(){
   const num=document.getElementById('manual-num').value.trim();
   const name=document.getElementById('manual-name').value.trim();
   if(!num||!name){alert('번호와 이름을 모두 입력해주세요.');return;}
-  studentInfo={classId:examData.class_id,studentNum:num,studentName:name};
+
+  // 번호로 먼저 찾고 → 클라이언트에서 이름 비교 (한글 인코딩 문제 우회)
+  const byNum=await sbGet('students','?number=eq.'+num);
+  const found=byNum&&byNum.length?byNum.filter(s=>s.name===name):[];
+  if(!found.length){
+    alert('명단에 등록되지 않은 학생입니다.\n번호와 이름을 다시 확인해주세요.\n선생님께 문의해주세요.');
+    return;
+  }
+  studentData=found[0];
+
+  // 중복 제출 체크
+  const existing=await sbGet('submissions','?exam_id=eq.'+examData.exam_id+'&student_id=eq.'+studentData.student_id);
+  if(existing&&existing.length){
+    alert('이미 제출한 시험입니다.\n선생님께 문의하세요.');
+    return;
+  }
+
   document.getElementById('verify-screen').style.display='none';
   showExamScreen();
 }
@@ -185,12 +207,14 @@ function manualVerify(){
 function showExamScreen(){
   document.getElementById('exam-screen').style.display='block';
   document.getElementById('exam-title').textContent=examData.title;
-  document.getElementById('exam-class').textContent=(examData.class_name||'')+(examData.exam_date?' · '+examData.exam_date:'');
-  document.getElementById('verified-badge').textContent='✓  '+studentInfo.studentName+' 학생 확인됨';
-  document.getElementById('student-name').value=studentInfo.studentName;
-  document.getElementById('student-num').value=studentInfo.studentNum+'번';
+  document.getElementById('exam-sub').textContent='답안을 선택하고 제출하세요';
+  document.getElementById('verified-badge').textContent='✓  '+studentData.name+' 학생 확인됨';
+  document.getElementById('student-name').value=studentData.name;
+  document.getElementById('student-info').value=studentData.number+'번 · '+(studentData.class_name||'');
+
   const mcQs=examData.questions.filter(q=>q.type==='mc');
   const essayQs=examData.questions.filter(q=>q.type==='essay');
+
   if(mcQs.length){
     document.getElementById('mc-section-title').style.display='block';
     const wrap=document.getElementById('mc-questions');
@@ -222,8 +246,6 @@ async function submitAnswers(){
   const btn=document.getElementById('submit-btn');
   btn.disabled=true;btn.textContent='제출 중...';
   try{
-    const existing=await sbGet('submissions','?exam_id=eq.'+examData.exam_id+'&student_number=eq.'+studentInfo.studentNum+'&class_id=eq.'+examData.class_id);
-    if(existing&&existing.length){alert('이미 제출한 시험입니다. 선생님께 문의하세요.');btn.disabled=false;btn.textContent='답안 제출하기';return;}
     const allQ=examData.allQuestions;
     const mcQs=allQ.filter(q=>q.type==='mc');
     let mcScore=0;const gradedMC={};
@@ -235,16 +257,24 @@ async function submitAnswers(){
       gradedMC[q.num]={submitted,correct,isCorrect,score:isCorrect?Number(q.score):0};
     });
     const mcTotal=mcQs.reduce((s,q)=>s+Number(q.score),0);
+    const today=new Date().toLocaleDateString('ko-KR');
     const submitId='SUB'+Date.now();
+
     await sbPost('submissions',{
-      submit_id:submitId,exam_id:examData.exam_id,exam_title:examData.title,
-      class_id:examData.class_id,class_name:examData.class_name,
-      student_number:studentInfo.studentNum,student_name:studentInfo.studentName,
-      submitted_at:new Date().toLocaleString('ko-KR'),
+      submit_id:submitId,
+      exam_id:examData.exam_id,
+      exam_title:examData.title,
+      student_id:studentData.student_id,
+      student_number:studentData.number,
+      student_name:studentData.name,
+      class_id:studentData.class_id,
+      class_name:studentData.class_name,
+      submitted_date:today,
       answers_json:JSON.stringify({mc:mcAnswers,essay:essayAnswers}),
       mc_score:mcScore,essay_score:0,total_score:mcScore,graded:'N'
     });
-    // 오답통계
+
+    // 오답통계 업데이트
     for(const[num,result]of Object.entries(gradedMC)){
       const ex=await sbGet('item_stats','?exam_id=eq.'+examData.exam_id+'&item_number=eq.'+num);
       if(ex&&ex.length){
@@ -255,8 +285,12 @@ async function submitAnswers(){
         await sbPost('item_stats',{exam_id:examData.exam_id,item_number:Number(num),total_count:1,wrong_count:result.isCorrect?0:1,wrong_pct:result.isCorrect?0:100});
       }
     }
-    renderResult({studentName:studentInfo.studentName,mcScore,mcTotal,gradedMC,hasEssay:allQ.some(q=>q.type==='essay')});
-  }catch(e){alert('제출 실패. 다시 시도해주세요.\n'+e.message);btn.disabled=false;btn.textContent='답안 제출하기';}
+
+    renderResult({studentName:studentData.name,mcScore,mcTotal,gradedMC,hasEssay:allQ.some(q=>q.type==='essay')});
+  }catch(e){
+    alert('제출 실패. 다시 시도해주세요.\n'+e.message);
+    btn.disabled=false;btn.textContent='답안 제출하기';
+  }
 }
 
 function renderResult(data){
@@ -270,8 +304,11 @@ function renderResult(data){
   examData.questions.filter(q=>q.type==='mc').forEach(q=>{
     const g=data.gradedMC[q.num];
     const tr=document.createElement('tr');
-    const ox=g?(g.isCorrect?`<span class="badge-o"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5"/></svg></span>`:`<span class="badge-x"><svg width="14" height="14" viewBox="0 0 14 14"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></span>`):'<span class="badge-skip">미응답</span>';
-    tr.innerHTML=`<td>${q.num}</td><td style="font-size:16px;">${g?g.correct:'—'}</td><td style="font-size:16px;color:${g&&!g.isCorrect?'#ef4444':'#374151'}">${g?(g.submitted||'—'):'—'}</td><td>${ox}</td>`;
+    const ox=g?(g.isCorrect
+      ?`<span class="badge-o"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5"/></svg></span>`
+      :`<span class="badge-x"><svg width="14" height="14" viewBox="0 0 14 14"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></span>`)
+      :`<span class="badge-skip">미응답</span>`;
+    tr.innerHTML=`<td>${q.num}</td><td style="font-size:16px;">${g?g.correct:'—'}</td><td style="font-size:16px;color:${g&&!g.isCorrect?'#ef4444':'#374151'}">${g?(g.submitted||'미응답'):'—'}</td><td>${ox}</td>`;
     tbody.appendChild(tr);
   });
   if(data.hasEssay)document.getElementById('essay-notice').style.display='block';
