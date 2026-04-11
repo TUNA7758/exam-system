@@ -124,6 +124,15 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 .sqr-num{font-size:11px;color:#6b7280;margin-bottom:6px;}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;}
 .toast.show{opacity:1;}
+.method-tab{padding:7px 16px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:#6b7280;transition:all .15s;}
+.method-tab:hover{background:#f3f4f6;}
+.method-tab.active{background:#3b82f6;border-color:#3b82f6;color:#fff;}
+.q-cell{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px;text-align:center;}
+.q-cell-num{font-size:11px;color:#9ca3af;margin-bottom:4px;}
+.q-cell input{width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:6px;font-size:14px;text-align:center;outline:none;font-family:inherit;}
+.q-cell input:focus{border-color:#3b82f6;background:#fff;}
+.spinner{width:28px;height:28px;border:3px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
 </style>
 </head>
 <body>
@@ -153,20 +162,79 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
     <!-- 시험 등록 -->
     <div class="page" id="page-create">
       <div class="page-title">시험 등록</div>
-      <div class="page-sub">시험 제목과 문항/답안을 입력하면 QR코드가 자동 생성됩니다.</div>
+      <div class="page-sub">시험 제목과 답안을 입력하면 QR코드가 자동 생성됩니다.</div>
+
+      <!-- 기본 정보 -->
       <div class="card">
         <div class="card-title">시험 제목</div>
         <div class="field"><input type="text" id="c-title" placeholder="예) 6월 모의고사 수학"></div>
       </div>
+
+      <!-- 입력 방식 탭 -->
       <div class="card">
-        <div class="card-title">문항 설정</div>
-        <div class="q-header"><span style="text-align:center;">번호</span><span>유형</span><span>정답</span><span>배점</span><span></span></div>
-        <div id="q-list"></div>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-          <button class="btn btn-gray" onclick="addQ('mc')">+ 객관식 추가</button>
-          <button class="btn btn-gray" onclick="addQ('essay')">+ 서술형 추가</button>
+        <div class="card-title">문항 입력 방식</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <button class="method-tab active" id="tab-quick" onclick="switchMethod('quick')">⚡ 빠른 입력</button>
+          <button class="method-tab" id="tab-image" onclick="switchMethod('image')">📷 이미지 분석</button>
+          <button class="method-tab" id="tab-manual" onclick="switchMethod('manual')">✏️ 직접 입력</button>
+        </div>
+
+        <!-- 빠른 입력 -->
+        <div id="method-quick">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+            <div class="field">
+              <label>객관식 문항 수</label>
+              <input type="number" id="q-mc-count" placeholder="예) 20" min="0" max="100">
+            </div>
+            <div class="field">
+              <label>서술형 문항 수</label>
+              <input type="number" id="q-essay-count" placeholder="예) 2" min="0" max="20">
+            </div>
+            <div class="field">
+              <label>객관식 배점 (문항당)</label>
+              <input type="number" id="q-mc-score" placeholder="예) 4" value="4" min="1" max="100">
+            </div>
+          </div>
+          <button class="btn btn-gray" style="margin-bottom:14px;" onclick="generateQuickGrid()">문항 생성</button>
+          <div id="quick-grid" style="display:none;">
+            <div style="font-size:12px;font-weight:600;color:#6b7280;margin-bottom:8px;">정답 입력 <span style="font-weight:400;color:#9ca3af;">— 숫자(1~5) 또는 ①②③④⑤ 입력</span></div>
+            <div id="quick-cells" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;"></div>
+            <div id="essay-section" style="display:none;margin-top:16px;">
+              <div style="font-size:12px;font-weight:600;color:#6b7280;margin-bottom:8px;">서술형 배점</div>
+              <div id="essay-cells" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 이미지 분석 -->
+        <div id="method-image" style="display:none;">
+          <div style="border:2px dashed #e5e7eb;border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:border .15s;" id="img-drop-zone" onclick="document.getElementById('img-upload').click()" ondragover="event.preventDefault();this.style.borderColor='#3b82f6'" ondragleave="this.style.borderColor='#e5e7eb'" ondrop="handleImgDrop(event)">
+            <div style="font-size:32px;margin-bottom:8px;">📷</div>
+            <div style="font-size:14px;font-weight:600;color:#374151;">답안지 이미지를 올려주세요</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:4px;">클릭하거나 드래그앤드롭</div>
+          </div>
+          <input type="file" id="img-upload" accept="image/*" style="display:none;" onchange="analyzeImage(event)">
+          <div id="img-analyzing" style="display:none;text-align:center;padding:20px;color:#6b7280;font-size:13px;">
+            <div class="spinner" style="margin:0 auto 10px;"></div>
+            AI가 답안을 분석하는 중...
+          </div>
+          <div id="img-result" style="display:none;margin-top:14px;">
+            <div style="font-size:12px;font-weight:600;color:#6b7280;margin-bottom:8px;">인식 결과 <span style="font-weight:400;color:#9ca3af;">— 수정 가능합니다</span></div>
+            <div id="img-result-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;"></div>
+          </div>
+        </div>
+
+        <!-- 직접 입력 (기존 방식) -->
+        <div id="method-manual" style="display:none;">
+          <div class="q-header"><span style="text-align:center;">번호</span><span>유형</span><span>정답</span><span>배점</span><span></span></div>
+          <div id="q-list"></div>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button class="btn btn-gray" onclick="addQ('mc')">+ 객관식 추가</button>
+            <button class="btn btn-gray" onclick="addQ('essay')">+ 서술형 추가</button>
+          </div>
         </div>
       </div>
+
       <div style="display:flex;justify-content:flex-end;">
         <button class="btn btn-primary" id="create-btn" onclick="createExam()" style="padding:11px 26px;font-size:14px;">시험 등록 및 QR 생성</button>
       </div>
@@ -330,7 +398,102 @@ async function loadExamList(){
   }
 }
 
-// ══ 시험 등록 ══
+// ══ 입력 방식 전환 ══
+let currentMethod='quick';
+function switchMethod(method){
+  currentMethod=method;
+  ['quick','image','manual'].forEach(m=>{
+    document.getElementById('method-'+m).style.display=m===method?'block':'none';
+    document.getElementById('tab-'+m).classList.toggle('active',m===method);
+  });
+}
+
+// ══ 빠른 입력 — 문항 그리드 생성 ══
+function generateQuickGrid(){
+  const mcCount=Number(document.getElementById('q-mc-count').value)||0;
+  const essayCount=Number(document.getElementById('q-essay-count').value)||0;
+  if(!mcCount&&!essayCount){alert('문항 수를 입력해주세요.');return;}
+
+  const cells=document.getElementById('quick-cells');
+  cells.innerHTML='';
+  for(let i=1;i<=mcCount;i++){
+    const cell=document.createElement('div');cell.className='q-cell';
+    cell.innerHTML=`<div class="q-cell-num">${i}번</div><input type="text" id="qc-${i}" placeholder="1~5" maxlength="1">`;
+    cells.appendChild(cell);
+  }
+
+  const essaySection=document.getElementById('essay-section');
+  const essayCells=document.getElementById('essay-cells');
+  essayCells.innerHTML='';
+  if(essayCount>0){
+    essaySection.style.display='block';
+    for(let i=mcCount+1;i<=mcCount+essayCount;i++){
+      const cell=document.createElement('div');cell.className='q-cell';
+      cell.innerHTML=`<div class="q-cell-num">${i}번 <span style="color:#d97706;font-size:10px;">서술형</span></div><input type="number" id="qc-${i}" placeholder="배점" min="1" max="100">`;
+      essayCells.appendChild(cell);
+    }
+  } else { essaySection.style.display='none'; }
+
+  document.getElementById('quick-grid').style.display='block';
+}
+
+// ══ 이미지 분석 ══
+function handleImgDrop(e){
+  e.preventDefault();
+  document.getElementById('img-drop-zone').style.borderColor='#e5e7eb';
+  const file=e.dataTransfer.files[0];
+  if(file&&file.type.startsWith('image/'))processImage(file);
+}
+function analyzeImage(e){processImage(e.target.files[0]);}
+
+async function processImage(file){
+  document.getElementById('img-drop-zone').style.display='none';
+  document.getElementById('img-analyzing').style.display='block';
+  document.getElementById('img-result').style.display='none';
+
+  // base64 변환
+  const base64=await new Promise(res=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.readAsDataURL(file);
+  });
+
+  // Claude API로 이미지 분석
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:file.type,data:base64}},
+          {type:'text',text:'이 이미지는 시험 답안지입니다. 문항 번호와 정답을 파악해서 반드시 아래 JSON 형식으로만 응답하세요. 다른 설명 없이 JSON만 출력하세요.
+{"answers":[{"num":1,"answer":"3"},{"num":2,"answer":"1"},...]}'}
+        ]}]
+      })
+    });
+    const data=await resp.json();
+    const text=data.content[0].text.trim();
+    const json=JSON.parse(text.replace(/```json|```/g,'').trim());
+
+    document.getElementById('img-analyzing').style.display='none';
+    document.getElementById('img-result').style.display='block';
+    const grid=document.getElementById('img-result-grid');
+    grid.innerHTML='';
+    json.answers.forEach(a=>{
+      const cell=document.createElement('div');cell.className='q-cell';
+      cell.innerHTML=`<div class="q-cell-num">${a.num}번</div><input type="text" id="qc-${a.num}" value="${a.answer}" maxlength="1">`;
+      grid.appendChild(cell);
+    });
+  }catch(e){
+    document.getElementById('img-analyzing').style.display='none';
+    document.getElementById('img-drop-zone').style.display='block';
+    alert('이미지 분석에 실패했습니다. 다시 시도해주세요.');
+  }
+}
+
+// ══ 직접 입력 (기존) ══
 let qCount=0;
 function addQ(type){
   qCount++;
@@ -341,20 +504,63 @@ function addQ(type){
 }
 function renumQ(){document.querySelectorAll('#q-list .q-row').forEach((r,i)=>{const b=r.querySelector('.q-num');if(b)b.textContent=i+1;});}
 
+// ══ 입력값 → 정답 텍스트 변환 ══
+function normalizeAnswer(val){
+  const v=val.trim();
+  const map={'1':'①','2':'②','3':'③','4':'④','5':'⑤'};
+  return map[v]||v; // 숫자면 변환, 이미 ①이면 그대로
+}
+
 async function createExam(){
   const title=document.getElementById('c-title').value.trim();
   if(!title){alert('시험 제목을 입력해주세요.');return;}
-  const rows=document.querySelectorAll('#q-list .q-row');
-  if(!rows.length){alert('문항을 추가해주세요.');return;}
-  const questions=[];
-  rows.forEach((row,i)=>{
-    const sels=row.querySelectorAll('select');
-    const inps=row.querySelectorAll('input[type="number"]');
-    const type=sels[0].value;
-    const answer=type==='mc'?sels[1].value:'';
-    const score=Number(inps[0]?.value||5);
-    questions.push({num:i+1,type,answer,score});
-  });
+
+  let questions=[];
+
+  if(currentMethod==='quick'){
+    // 빠른 입력
+    const mcCount=Number(document.getElementById('q-mc-count').value)||0;
+    const essayCount=Number(document.getElementById('q-essay-count').value)||0;
+    const mcScore=Number(document.getElementById('q-mc-score').value)||4;
+    if(!mcCount&&!essayCount){alert('문항 수를 입력하고 [문항 생성] 버튼을 눌러주세요.');return;}
+    for(let i=1;i<=mcCount;i++){
+      const inp=document.getElementById('qc-'+i);
+      if(!inp){alert('[문항 생성] 버튼을 먼저 눌러주세요.');return;}
+      const raw=inp.value.trim();
+      if(!raw){alert(i+'번 정답을 입력해주세요.');return;}
+      questions.push({num:i,type:'mc',answer:normalizeAnswer(raw),score:mcScore});
+    }
+    for(let i=mcCount+1;i<=mcCount+essayCount;i++){
+      const inp=document.getElementById('qc-'+i);
+      const score=Number(inp?.value)||10;
+      questions.push({num:i,type:'essay',answer:'',score});
+    }
+
+  } else if(currentMethod==='image'){
+    // 이미지 분석 결과
+    const cells=document.querySelectorAll('#img-result-grid .q-cell input');
+    if(!cells.length){alert('이미지를 먼저 업로드하고 분석해주세요.');return;}
+    cells.forEach((inp,i)=>{
+      const raw=inp.value.trim();
+      questions.push({num:i+1,type:'mc',answer:normalizeAnswer(raw),score:4});
+    });
+
+  } else {
+    // 직접 입력
+    const rows=document.querySelectorAll('#q-list .q-row');
+    if(!rows.length){alert('문항을 추가해주세요.');return;}
+    rows.forEach((row,i)=>{
+      const sels=row.querySelectorAll('select');
+      const inps=row.querySelectorAll('input[type="number"]');
+      const type=sels[0].value;
+      const answer=type==='mc'?sels[1].value:'';
+      const score=Number(inps[0]?.value||5);
+      questions.push({num:i+1,type,answer,score});
+    });
+  }
+
+  if(!questions.length){alert('문항이 없습니다.');return;}
+
   const btn=document.getElementById('create-btn');
   btn.disabled=true;btn.textContent='등록 중...';
   const examId='EX'+Date.now();
@@ -365,8 +571,14 @@ async function createExam(){
     toast('✅ 시험이 등록되었습니다!');
     await loadExamList();
     showQR(examId,title);
+    // 초기화
     document.getElementById('c-title').value='';
+    document.getElementById('q-mc-count').value='';
+    document.getElementById('q-essay-count').value='';
+    document.getElementById('quick-grid').style.display='none';
     document.getElementById('q-list').innerHTML='';
+    document.getElementById('img-result').style.display='none';
+    document.getElementById('img-drop-zone').style.display='block';
     qCount=0;
   }catch(e){alert('오류: '+e.message);}
   btn.disabled=false;btn.textContent='시험 등록 및 QR 생성';
