@@ -159,17 +159,10 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 
       <!-- 필터 -->
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
-        <select id="filter-year" onchange="loadExamList()" style="border:1px solid #e5e7eb;border-radius:8px;padding:7px 11px;font-size:13px;outline:none;">
-          <option value="">전체 연도</option>
+        <select id="filter-folder" onchange="loadExamList()" style="border:1px solid #e5e7eb;border-radius:8px;padding:7px 11px;font-size:13px;outline:none;min-width:160px;">
+          <option value="">전체 폴더</option>
         </select>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;">
-          <button class="folder-tab active" onclick="setFolder('',this)">전체</button>
-          <button class="folder-tab" onclick="setFolder('1학기 중간',this)">1학기 중간</button>
-          <button class="folder-tab" onclick="setFolder('1학기 기말',this)">1학기 기말</button>
-          <button class="folder-tab" onclick="setFolder('2학기 중간',this)">2학기 중간</button>
-          <button class="folder-tab" onclick="setFolder('2학기 기말',this)">2학기 기말</button>
-          <button class="folder-tab" onclick="setFolder('미분류',this)">미분류</button>
-        </div>
+        <span style="font-size:12px;color:#9ca3af;">시험 등록/수정 시 폴더를 지정하면 여기에 자동으로 나타납니다.</span>
       </div>
 
       <div class="card" style="padding:0;overflow:hidden;">
@@ -190,13 +183,8 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
         <div class="form-row col2">
           <div class="field"><label>시험 제목</label><input type="text" id="c-title" placeholder="예) 6월 모의고사 수학"></div>
           <div class="field"><label>분류 (폴더)</label>
-            <select id="c-folder">
-              <option value="미분류">미분류</option>
-              <option value="1학기 중간">1학기 중간</option>
-              <option value="1학기 기말">1학기 기말</option>
-              <option value="2학기 중간">2학기 중간</option>
-              <option value="2학기 기말">2학기 기말</option>
-            </select>
+            <input type="text" id="c-folder" placeholder="예) 2025 1학기 중간" list="folder-suggestions" autocomplete="off">
+            <datalist id="folder-suggestions"></datalist>
           </div>
         </div>
       </div>
@@ -354,13 +342,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
       </div>
       <div class="field">
         <label>분류 (폴더)</label>
-        <select id="edit-folder">
-          <option value="미분류">미분류</option>
-          <option value="1학기 중간">1학기 중간</option>
-          <option value="1학기 기말">1학기 기말</option>
-          <option value="2학기 중간">2학기 중간</option>
-          <option value="2학기 기말">2학기 기말</option>
-        </select>
+        <input type="text" id="edit-folder" placeholder="예) 2025 1학기 중간" list="folder-suggestions" autocomplete="off">
       </div>
     </div>
     <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;">문항 설정</div>
@@ -410,12 +392,6 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 var SB_URL = 'https://vvbanjdioahaaqamibbh.supabase.co';
 
 var currentFolder = '';
-function setFolder(folder, el) {
-  currentFolder = folder;
-  document.querySelectorAll('.folder-tab').forEach(function(t) { t.classList.remove('active'); });
-  el.classList.add('active');
-  loadExamList();
-}
 var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2YmFuamRpb2FoYWFxYW1pYmJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzAzOTYsImV4cCI6MjA5MTQwNjM5Nn0.gKFDN93mmaKhVH-Quw69bZl9AYaVp_b4aJ02oT9C-Bc';
 var STUDENT_URL = 'https://tuna7758.github.io/exam-system/student.html';
 var H = {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json'};
@@ -466,33 +442,37 @@ function goPage(id) {
 
 // 시험 목록
 async function loadExamList() {
-  // 연도 필터 초기화
-  var yearSel = document.getElementById('filter-year');
-  var selectedYear = yearSel ? yearSel.value : '';
-
   var allData = await sbGet('exams', '?order=created_at.desc');
   if (!allData) allData = [];
 
-  // 연도 목록 자동 생성
-  var years = {};
+  // 폴더 목록 자동 생성
+  var folderSel = document.getElementById('filter-folder');
+  var selectedFolder = folderSel ? folderSel.value : '';
+  var folders = {};
   allData.forEach(function(ex) {
-    var y = ex.created_at ? ex.created_at.substring(0, 4) : '';
-    if (y) years[y] = true;
+    var f = ex.folder || '미분류';
+    folders[f] = true;
   });
-  var currentOptions = yearSel ? Array.from(yearSel.options).map(function(o){return o.value;}) : [];
-  if (yearSel && Object.keys(years).length !== currentOptions.length - 1) {
-    yearSel.innerHTML = '<option value="">전체 연도</option>';
-    Object.keys(years).sort().reverse().forEach(function(y) {
-      yearSel.innerHTML += '<option value="' + y + '">' + y + '년</option>';
+  var folderKeys = Object.keys(folders).sort();
+  // 필터 드롭다운 갱신
+  var prevFolders = folderSel ? Array.from(folderSel.options).slice(1).map(function(o){return o.value;}) : [];
+  if (JSON.stringify(folderKeys) !== JSON.stringify(prevFolders)) {
+    folderSel.innerHTML = '<option value="">전체 폴더</option>';
+    folderKeys.forEach(function(f) {
+      folderSel.innerHTML += '<option value="' + f + '">' + f + '</option>';
     });
-    if (selectedYear) yearSel.value = selectedYear;
+    if (selectedFolder) folderSel.value = selectedFolder;
+  }
+  // datalist 자동완성 갱신
+  var dl = document.getElementById('folder-suggestions');
+  if (dl) {
+    dl.innerHTML = folderKeys.map(function(f) { return '<option value="' + f + '">'; }).join('');
   }
 
   // 필터 적용
+  var filterFolder = folderSel ? folderSel.value : '';
   var data = allData.filter(function(ex) {
-    var folderOk = !currentFolder || (ex.folder || '미분류') === currentFolder;
-    var yearOk = !selectedYear || (ex.created_at || '').substring(0, 4) === selectedYear;
-    return folderOk && yearOk;
+    return !filterFolder || (ex.folder || '미분류') === filterFolder;
   });
 
   var tbody = document.getElementById('exam-list-body');
