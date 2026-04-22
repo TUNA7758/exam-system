@@ -270,6 +270,8 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
           <div class="g-head">
             <div class="g-title" id="g-student-name">← 학생을 선택하세요</div>
             <div class="g-btns">
+              <span id="refresh-counter" style="display:none;font-size:11px;color:#9ca3af;align-items:center;gap:4px;"><span>30초 후 자동 갱신</span></span>
+              <button class="btn btn-gray btn-sm" onclick="loadGradeData(currentGradeExamId);refreshCountdown=30;">🔄 새로고침</button>
               <button class="all-o" onclick="markAll('O')">전체 <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="6.5" cy="6.5" r="4.5"/></svg></button>
               <button class="all-x" onclick="markAll('X')">전체 <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#ef4444" stroke-width="2"><line x1="3" y1="3" x2="10" y2="10"/><line x1="10" y1="3" x2="3" y2="10"/></svg></button>
             </div>
@@ -830,44 +832,37 @@ async function showStudentQRs(classId, className) {
 var currentExam = null, currentSi = 0;
 var grading = {};
 
+var autoRefreshTimer = null;
+var currentGradeExamId = '';
+
 async function openGrade(examId) {
+  // 기존 자동 새로고침 중지
+  if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+
+  currentGradeExamId = examId;
   document.getElementById('nav-grade').style.display = 'flex';
   document.getElementById('nav-stats').style.display = 'flex';
   goPage('grade');
   document.getElementById('grade-title').textContent = '불러오는 중...';
   document.getElementById('grade-tbody').innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:#9ca3af;">불러오는 중...</td></tr>';
 
-  var exams = await sbGet('exams', '?exam_id=eq.' + examId);
-  var exam = exams[0];
-  var submissions = await sbGet('submissions', '?exam_id=eq.' + examId + '&order=submitted_date.asc');
-  var stats = await sbGet('item_stats', '?exam_id=eq.' + examId);
-  var questions = JSON.parse(exam.questions_json);
-  var itemStats = {};
-  (stats || []).forEach(function(s) { itemStats[s.item_number] = {wrongPct: s.wrong_pct, wrong: s.wrong_count, total: s.total_count}; });
+  await loadGradeData(examId);
 
-  currentExam = {
-    exam: Object.assign({}, exam, {questions: questions}),
-    students: (submissions || []).map(function(s) {
-      var ans = JSON.parse(s.answers_json || '{}');
-      return Object.assign({}, s, {mcAnswers: ans.mc || {}, essayAnswers: ans.essay || {}});
-    }),
-    itemStats: itemStats
-  };
-  currentSi = 0;
+  // 30초마다 자동 새로고침 (새 학생 제출 반영)
+  autoRefreshTimer = setInterval(async function() {
+    var newSubs = await sbGet('submissions', '?exam_id=eq.' + examId + '&order=submitted_date.asc');
+    var prevCount = currentExam ? currentExam.students.length : 0;
+    var newCount = newSubs ? newSubs.length : 0;
+    if (newCount > prevCount) {
+      // 새 제출자 있으면 학생 목록만 업데이트
+      await loadGradeData(examId);
+      toast('🔔 새로운 제출이 ' + (newCount - prevCount) + '명 있습니다!');
+    }
+    // 카운터 갱신
+    updateRefreshCounter();
+  }, 30000);
 
-  document.getElementById('grade-title').textContent = exam.title + ' 채점';
-  document.getElementById('stats-title').textContent = exam.title + ' 통계';
-
-  currentExam.students.forEach(function(s, si) {
-    grading[si] = {};
-    questions.filter(function(q) { return q.type === 'mc'; }).forEach(function(q) {
-      grading[si][q.num] = String(s.mcAnswers[q.num] || '') === String(q.answer) ? 'O' : 'X';
-    });
-  });
-
-  renderGStudents();
-  renderGTable();
-  renderStats();
+  startRefreshCounter();
 }
 
 function calcScore(si) {
@@ -1018,6 +1013,68 @@ function switchTab(id, el) {
   document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
   document.getElementById('tab-' + id).classList.add('active'); el.classList.add('active');
 }
+// ── 채점 데이터 로드 (자동새로고침용 분리) ──
+async function loadGradeData(examId) {
+  var exams = await sbGet('exams', '?exam_id=eq.' + examId);
+  if (!exams || !exams.length) return;
+  var exam = exams[0];
+  var submissions = await sbGet('submissions', '?exam_id=eq.' + examId + '&order=submitted_date.asc');
+  var stats = await sbGet('item_stats', '?exam_id=eq.' + examId);
+  var questions = JSON.parse(exam.questions_json);
+  var itemStats = {};
+  (stats || []).forEach(function(s) { itemStats[s.item_number] = {wrongPct: s.wrong_pct, wrong: s.wrong_count, total: s.total_count}; });
+
+  var prevSi = currentSi;
+  currentExam = {
+    exam: Object.assign({}, exam, {questions: questions}),
+    students: (submissions || []).map(function(s) {
+      var ans = JSON.parse(s.answers_json || '{}');
+      return Object.assign({}, s, {mcAnswers: ans.mc || {}, essayAnswers: ans.essay || {}});
+    }),
+    itemStats: itemStats
+  };
+
+  // 기존에 없던 학생만 채점 초기화 (기존 채점 유지)
+  currentExam.students.forEach(function(s, si) {
+    if (!grading[si]) {
+      grading[si] = {};
+      questions.filter(function(q) { return q.type === 'mc'; }).forEach(function(q) {
+        grading[si][q.num] = String(s.mcAnswers[q.num] || '') === String(q.answer) ? 'O' : 'X';
+      });
+    }
+  });
+
+  // 현재 선택된 학생 유지 (범위 초과시 0으로)
+  if (prevSi >= currentExam.students.length) currentSi = 0;
+  else currentSi = prevSi;
+
+  document.getElementById('grade-title').textContent = exam.title + ' 채점';
+  document.getElementById('stats-title').textContent = exam.title + ' 통계';
+
+  renderGStudents();
+  renderGTable();
+  renderStats();
+}
+
+// ── 새로고침 카운터 ──
+var refreshCountdown = 30;
+var countdownTimer = null;
+function startRefreshCounter() {
+  refreshCountdown = 30;
+  if (countdownTimer) clearInterval(countdownTimer);
+  var el = document.getElementById('refresh-counter');
+  if (el) el.style.display = 'inline-flex';
+  countdownTimer = setInterval(function() {
+    refreshCountdown--;
+    if (refreshCountdown <= 0) refreshCountdown = 30;
+    updateRefreshCounter();
+  }, 1000);
+}
+function updateRefreshCounter() {
+  var el = document.getElementById('refresh-counter');
+  if (el) el.querySelector('span').textContent = refreshCountdown + '초 후 자동 갱신';
+}
+
 // ── 시험 수정 ──
 var editExamId = '';
 
