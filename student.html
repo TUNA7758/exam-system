@@ -257,16 +257,17 @@ async function submitAnswers(){
   try{
     const allQ=examData.allQuestions;
     const mcQs=allQ.filter(q=>q.type==='mc');
+    // 소수점 오차 방지: 소수점 2자리로 정확히 계산
+    const round2 = v => Math.round(v * 100) / 100;
     let mcScore=0;const gradedMC={};
     mcQs.forEach(q=>{
       const submitted=String(mcAnswers[q.num]||'');
       const correct=String(q.answer);
       const isCorrect=submitted===correct;
-      if(isCorrect)mcScore+=Number(q.score);
-      gradedMC[q.num]={submitted,correct,isCorrect,score:isCorrect?Number(q.score):0};
+      if(isCorrect)mcScore=round2(mcScore+Number(q.score));
+      gradedMC[q.num]={submitted,correct,isCorrect,score:isCorrect?round2(Number(q.score)):0};
     });
-    mcScore=Math.round(mcScore*100)/100; // 소수점 버그 방지
-    const mcTotal=Math.round(mcQs.reduce((s,q)=>s+Number(q.score),0)*100)/100;
+    const mcTotal=round2(mcQs.reduce((s,q)=>round2(s+Number(q.score)),0));
     const today=new Date().toLocaleDateString('ko-KR');
     const submitId='SUB'+Date.now();
 
@@ -281,7 +282,7 @@ async function submitAnswers(){
       class_name:studentData.class_name,
       submitted_date:today,
       answers_json:JSON.stringify({mc:mcAnswers,essay:essayAnswers}),
-      mc_score:Math.round(mcScore),essay_score:0,total_score:Math.round(mcScore),graded:'N'
+      mc_score:round2(mcScore),essay_score:0,total_score:round2(mcScore),graded:'N'
     });
 
     // 오답통계 업데이트
@@ -308,7 +309,8 @@ function renderResult(data){
   document.getElementById('result-screen').style.display='block';
   document.getElementById('result-exam-title').textContent=examData.title;
   document.getElementById('result-name').textContent=data.studentName+' 학생';
-  document.getElementById('result-score').innerHTML=`${Math.round(data.mcScore)}<span>/${Math.round(data.mcTotal)}점 (객관식)</span>`;
+  const fmt = v => Number.isInteger(v) ? v : Math.round(v*100)/100;
+  document.getElementById('result-score').innerHTML=`${fmt(data.mcScore)}<span>/${fmt(data.mcTotal)}점 (객관식)</span>`;
   document.getElementById('result-sub').textContent=`정답률 ${Math.round(data.mcScore/data.mcTotal*100)}%`;
   const tbody=document.getElementById('result-body');
   examData.questions.filter(q=>q.type==='mc').forEach(q=>{
