@@ -135,6 +135,9 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 @keyframes spin{to{transform:rotate(360deg);}}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;}
 .toast.show{opacity:1;}
+.folder-tab{padding:6px 14px;border:1px solid #e5e7eb;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#6b7280;transition:all .15s;}
+.folder-tab:hover{background:#f3f4f6;}
+.folder-tab.active{background:#1e293b;border-color:#1e293b;color:#fff;}
 </style>
 </head>
 <body>
@@ -153,10 +156,26 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
     <div class="page active" id="page-exams">
       <div class="page-title">시험 목록</div>
       <div class="page-sub">등록된 시험을 관리하고 QR코드를 확인하세요.</div>
+
+      <!-- 필터 -->
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+        <select id="filter-year" onchange="loadExamList()" style="border:1px solid #e5e7eb;border-radius:8px;padding:7px 11px;font-size:13px;outline:none;">
+          <option value="">전체 연도</option>
+        </select>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <button class="folder-tab active" onclick="setFolder('',this)">전체</button>
+          <button class="folder-tab" onclick="setFolder('1학기 중간',this)">1학기 중간</button>
+          <button class="folder-tab" onclick="setFolder('1학기 기말',this)">1학기 기말</button>
+          <button class="folder-tab" onclick="setFolder('2학기 중간',this)">2학기 중간</button>
+          <button class="folder-tab" onclick="setFolder('2학기 기말',this)">2학기 기말</button>
+          <button class="folder-tab" onclick="setFolder('미분류',this)">미분류</button>
+        </div>
+      </div>
+
       <div class="card" style="padding:0;overflow:hidden;">
         <table class="tbl">
-          <thead><tr><th>시험 제목</th><th>문항</th><th>제출</th><th>상태</th><th>관리</th></tr></thead>
-          <tbody id="exam-list-body"><tr><td colspan="5" style="text-align:center;padding:28px;color:#9ca3af;">불러오는 중...</td></tr></tbody>
+          <thead><tr><th>시험 제목</th><th>분류</th><th>문항</th><th>제출</th><th>상태</th><th>관리</th></tr></thead>
+          <tbody id="exam-list-body"><tr><td colspan="6" style="text-align:center;padding:28px;color:#9ca3af;">불러오는 중...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -167,8 +186,19 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
       <div class="page-sub">시험 제목과 답안을 입력하면 QR코드가 자동 생성됩니다.</div>
 
       <div class="card">
-        <div class="card-title">시험 제목</div>
-        <div class="field"><input type="text" id="c-title" placeholder="예) 6월 모의고사 수학"></div>
+        <div class="card-title">기본 정보</div>
+        <div class="form-row col2">
+          <div class="field"><label>시험 제목</label><input type="text" id="c-title" placeholder="예) 6월 모의고사 수학"></div>
+          <div class="field"><label>분류 (폴더)</label>
+            <select id="c-folder">
+              <option value="미분류">미분류</option>
+              <option value="1학기 중간">1학기 중간</option>
+              <option value="1학기 기말">1학기 기말</option>
+              <option value="2학기 중간">2학기 중간</option>
+              <option value="2학기 기말">2학기 기말</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -317,9 +347,21 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
       <div style="font-size:16px;font-weight:700;color:#111;">시험 수정</div>
       <button onclick="document.getElementById('edit-modal').style.display='none'" style="border:none;background:none;font-size:20px;cursor:pointer;color:#6b7280;">✕</button>
     </div>
-    <div class="field" style="margin-bottom:14px;">
-      <label>시험 제목</label>
-      <input type="text" id="edit-title" placeholder="시험 제목">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div class="field">
+        <label>시험 제목</label>
+        <input type="text" id="edit-title" placeholder="시험 제목">
+      </div>
+      <div class="field">
+        <label>분류 (폴더)</label>
+        <select id="edit-folder">
+          <option value="미분류">미분류</option>
+          <option value="1학기 중간">1학기 중간</option>
+          <option value="1학기 기말">1학기 기말</option>
+          <option value="2학기 중간">2학기 중간</option>
+          <option value="2학기 기말">2학기 기말</option>
+        </select>
+      </div>
     </div>
     <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;">문항 설정</div>
     <div class="q-header"><span style="text-align:center;">번호</span><span>유형</span><span>정답</span><span>배점</span><span></span></div>
@@ -415,27 +457,68 @@ function goPage(id) {
 }
 
 // 시험 목록
+var currentFolder = '';
+
+function setFolder(folder, el) {
+  currentFolder = folder;
+  document.querySelectorAll('.folder-tab').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  loadExamList();
+}
+
 async function loadExamList() {
-  var data = await sbGet('exams', '?order=created_at.desc');
+  // 연도 필터 초기화
+  var yearSel = document.getElementById('filter-year');
+  var selectedYear = yearSel ? yearSel.value : '';
+
+  var allData = await sbGet('exams', '?order=created_at.desc');
+  if (!allData) allData = [];
+
+  // 연도 목록 자동 생성
+  var years = {};
+  allData.forEach(function(ex) {
+    var y = ex.created_at ? ex.created_at.substring(0, 4) : '';
+    if (y) years[y] = true;
+  });
+  var currentOptions = yearSel ? Array.from(yearSel.options).map(function(o){return o.value;}) : [];
+  if (yearSel && Object.keys(years).length !== currentOptions.length - 1) {
+    yearSel.innerHTML = '<option value="">전체 연도</option>';
+    Object.keys(years).sort().reverse().forEach(function(y) {
+      yearSel.innerHTML += '<option value="' + y + '">' + y + '년</option>';
+    });
+    if (selectedYear) yearSel.value = selectedYear;
+  }
+
+  // 필터 적용
+  var data = allData.filter(function(ex) {
+    var folderOk = !currentFolder || (ex.folder || '미분류') === currentFolder;
+    var yearOk = !selectedYear || (ex.created_at || '').substring(0, 4) === selectedYear;
+    return folderOk && yearOk;
+  });
+
   var tbody = document.getElementById('exam-list-body');
-  if (!data || !data.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:28px;color:#9ca3af;">등록된 시험이 없습니다.</td></tr>';
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:28px;color:#9ca3af;">등록된 시험이 없습니다.</td></tr>';
     return;
   }
   tbody.innerHTML = '';
   for (var i = 0; i < data.length; i++) {
     var ex = data[i];
     var subs = await sbGet('submissions', '?exam_id=eq.' + ex.exam_id + '&select=submit_id');
+    var subCount = subs ? subs.length : 0;
+    var folder = ex.folder || '미분류';
     var tr = document.createElement('tr');
     tr.innerHTML = '<td><strong>' + ex.title + '</strong></td>' +
+      '<td><span style="font-size:11px;background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:10px;">' + folder + '</span></td>' +
       '<td style="font-size:12px;">객' + ex.mc_count + '/서' + ex.essay_count + '</td>' +
-      '<td><span style="color:#3b82f6;font-weight:600;">' + (subs ? subs.length : 0) + '명</span></td>' +
+      '<td><span style="color:#3b82f6;font-weight:600;">' + subCount + '명</span></td>' +
       '<td><span class="' + (ex.active === 'Y' ? 'badge-on' : 'badge-off') + '">' + (ex.active === 'Y' ? '진행중' : '마감') + '</span></td>' +
       '<td><div class="btn-group">' +
         '<button class="btn btn-gray btn-sm" onclick="showQR(\'' + ex.exam_id + '\',\'' + ex.title.replace(/'/g, '') + '\')">QR</button>' +
         '<button class="btn btn-green btn-sm" onclick="openGrade(\'' + ex.exam_id + '\')">채점</button>' +
         '<button class="btn btn-primary btn-sm" onclick="openEdit(\'' + ex.exam_id + '\')">수정</button>' +
         '<button class="btn btn-gray btn-sm" onclick="toggleExam(\'' + ex.exam_id + '\',\'' + ex.active + '\')">' + (ex.active === 'Y' ? '마감' : '재개') + '</button>' +
+        (subCount > 0 ? '<button class="btn btn-danger btn-sm" onclick="clearSubmissions(\'' + ex.exam_id + '\',\'' + ex.title.replace(/'/g,'') + '\')">제출초기화</button>' : '') +
         '<button class="btn btn-danger btn-sm" onclick="deleteExam(\'' + ex.exam_id + '\')">삭제</button>' +
       '</div></td>';
     tbody.appendChild(tr);
@@ -663,8 +746,9 @@ async function createExam() {
   var essay = questions.filter(function(q) { return q.type === 'essay'; });
 
   try {
+    var folder = document.getElementById('c-folder') ? document.getElementById('c-folder').value : '미분류';
     await sbPost('exams', {
-      exam_id: examId, title: title,
+      exam_id: examId, title: title, folder: folder,
       mc_count: mc.length, essay_count: essay.length,
       questions_json: JSON.stringify(questions),
       created_at: new Date().toLocaleString('ko-KR'), active: 'Y'
@@ -888,9 +972,12 @@ function renderGStudents() {
     var div = document.createElement('div');
     div.className = 's-item' + (si === currentSi ? ' active' : '');
     div.innerHTML =
-      '<div style="display:flex;justify-content:space-between;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
         '<span class="s-item-name">' + s.student_name + '</span>' +
-        '<span class="s-item-score">' + score + '점</span>' +
+        '<div style="display:flex;align-items:center;gap:4px;">' +
+          '<span class="s-item-score">' + score + '점</span>' +
+          '<button onclick="event.stopPropagation();deleteSubmission(\'' + s.submit_id + '\',\'' + s.student_name + '\')" style="width:18px;height:18px;border:none;background:#fee2e2;color:#dc2626;border-radius:4px;cursor:pointer;font-size:10px;line-height:1;padding:0;flex-shrink:0;">✕</button>' +
+        '</div>' +
       '</div>' +
       '<div class="s-item-meta">' + s.student_number + '번 · ' + (s.class_name || '') + ' · ' + (s.submitted_date || '') + '</div>';
     div.onclick = (function(idx) { return function() { currentSi = idx; renderGStudents(); renderGTable(); }; })(si);
@@ -1089,6 +1176,8 @@ async function openEdit(examId) {
   var questions = JSON.parse(exam.questions_json || '[]');
 
   document.getElementById('edit-title').value = exam.title;
+  var editFolder = document.getElementById('edit-folder');
+  if (editFolder) editFolder.value = exam.folder || '미분류';
   var qList = document.getElementById('edit-q-list');
   qList.innerHTML = '';
 
@@ -1177,8 +1266,10 @@ async function saveExamEdit() {
   btn.disabled = true; btn.textContent = '저장 중...';
 
   try {
+    var editFolderVal = document.getElementById('edit-folder') ? document.getElementById('edit-folder').value : '미분류';
     await sbPatch('exams', {
       title: title,
+      folder: editFolderVal,
       mc_count: mc.length,
       essay_count: essay.length,
       questions_json: JSON.stringify(questions)
@@ -1195,6 +1286,24 @@ async function saveExamEdit() {
 async function toggleExam(examId, active) {
   await sbPatch('exams', {active: active === 'Y' ? 'N' : 'Y'}, '?exam_id=eq.' + examId);
   await loadExamList();
+}
+
+// 시험 제출 전체 초기화
+async function clearSubmissions(examId, title) {
+  if (!confirm('[' + title + '] 시험의 제출 데이터를 전부 삭제하시겠습니까?
+이 작업은 되돌릴 수 없습니다.')) return;
+  await sbDelete('submissions', '?exam_id=eq.' + examId);
+  await sbDelete('item_stats', '?exam_id=eq.' + examId);
+  toast('✅ 제출 데이터가 초기화되었습니다.');
+  await loadExamList();
+}
+
+// 특정 학생 제출 삭제
+async function deleteSubmission(submitId, studentName) {
+  if (!confirm(studentName + ' 학생의 제출 데이터를 삭제하시겠습니까?')) return;
+  await sbDelete('submissions', '?submit_id=eq.' + submitId);
+  toast('✅ ' + studentName + ' 학생 데이터가 삭제되었습니다.');
+  await loadGradeData(currentGradeExamId);
 }
 async function deleteExam(examId) {
   if (!confirm('삭제하면 복구할 수 없습니다.')) return;
