@@ -656,7 +656,7 @@ function updateScoreTotal() {
   var total = 0;
   document.querySelectorAll('#q-list .q-row').forEach(function(r) {
     var inp = r.querySelector('input[type="number"]');
-    if (inp) total += Number(inp.value) || 0;
+    if (inp) total = Math.round((total + (Number(inp.value) || 0)) * 100) / 100;
   });
   var el = document.getElementById('manual-score-total');
   if (el) {
@@ -1211,7 +1211,7 @@ function updateEditTotal() {
   var total = 0;
   document.querySelectorAll('#edit-q-list .q-row').forEach(function(r) {
     var inp = r.querySelector('input[type="number"]');
-    if (inp) total += Number(inp.value) || 0;
+    if (inp) total = Math.round((total + (Number(inp.value) || 0)) * 100) / 100;
   });
   var el = document.getElementById('edit-score-total');
   if (el) {
