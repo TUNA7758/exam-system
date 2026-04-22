@@ -408,6 +408,14 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 
 <script>
 var SB_URL = 'https://vvbanjdioahaaqamibbh.supabase.co';
+
+var currentFolder = '';
+function setFolder(folder, el) {
+  currentFolder = folder;
+  document.querySelectorAll('.folder-tab').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  loadExamList();
+}
 var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2YmFuamRpb2FoYWFxYW1pYmJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzAzOTYsImV4cCI6MjA5MTQwNjM5Nn0.gKFDN93mmaKhVH-Quw69bZl9AYaVp_b4aJ02oT9C-Bc';
 var STUDENT_URL = 'https://tuna7758.github.io/exam-system/student.html';
 var H = {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json'};
@@ -457,15 +465,6 @@ function goPage(id) {
 }
 
 // 시험 목록
-var currentFolder = '';
-
-function setFolder(folder, el) {
-  currentFolder = folder;
-  document.querySelectorAll('.folder-tab').forEach(function(t) { t.classList.remove('active'); });
-  el.classList.add('active');
-  loadExamList();
-}
-
 async function loadExamList() {
   // 연도 필터 초기화
   var yearSel = document.getElementById('filter-year');
@@ -1290,8 +1289,7 @@ async function toggleExam(examId, active) {
 
 // 시험 제출 전체 초기화
 async function clearSubmissions(examId, title) {
-  if (!confirm('[' + title + '] 시험의 제출 데이터를 전부 삭제하시겠습니까?
-이 작업은 되돌릴 수 없습니다.')) return;
+  if (!confirm('[' + title + '] 시험의 제출 데이터를 전부 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
   await sbDelete('submissions', '?exam_id=eq.' + examId);
   await sbDelete('item_stats', '?exam_id=eq.' + examId);
   toast('✅ 제출 데이터가 초기화되었습니다.');
