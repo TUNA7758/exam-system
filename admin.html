@@ -50,8 +50,8 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 .q-cell input:focus{border-color:#3b82f6;background:#fff;}
 .q-cell input.essay-inp{font-size:13px;}
 /* 직접입력 */
-.q-header{display:grid;grid-template-columns:46px 95px 1fr 75px 34px;gap:8px;padding:7px 0;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;margin-bottom:4px;}
-.q-row{display:grid;grid-template-columns:46px 95px 1fr 75px 34px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #f3f4f6;}
+.q-header{display:grid;grid-template-columns:46px 95px 1fr 140px 75px 34px;gap:8px;padding:7px 0;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;margin-bottom:4px;}
+.q-row{display:grid;grid-template-columns:46px 95px 1fr 140px 75px 34px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #f3f4f6;}
 .q-row:last-child{border-bottom:none;}
 .q-row input,.q-row select{border:1px solid #e5e7eb;border-radius:6px;padding:6px 8px;font-size:12px;width:100%;outline:none;font-family:inherit;}
 .q-num{font-size:13px;font-weight:600;color:#374151;text-align:center;}
@@ -239,7 +239,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 
         <!-- 직접 입력 -->
         <div id="method-manual" style="display:none;">
-          <div class="q-header"><span style="text-align:center;">번호</span><span>유형</span><span>정답</span><span>배점</span><span></span></div>
+          <div class="q-header" style="grid-template-columns:46px 95px 1fr 140px 75px 34px;"><span style="text-align:center;">번호</span><span>유형</span><span>정답</span><span>소단원(선택)</span><span>배점</span><span></span></div>
           <div id="q-list"></div>
           <div style="display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap;">
             <button class="btn btn-gray" onclick="addQ('mc')">+ 객관식 추가</button>
@@ -390,6 +390,13 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 
 <script>
 var SB_URL = 'https://vvbanjdioahaaqamibbh.supabase.co';
+var subtopicHistory = JSON.parse(localStorage.getItem('subtopics')||'[]');
+function saveSubtopic(v){ if(v&&subtopicHistory.indexOf(v)<0){ subtopicHistory.push(v); if(subtopicHistory.length>50) subtopicHistory.shift(); try{localStorage.setItem('subtopics',JSON.stringify(subtopicHistory));}catch(e){} } }
+function updateSubtopicList(questions){
+  questions.forEach(function(q){ if(q.subtopic) saveSubtopic(q.subtopic); });
+  var dl = document.getElementById('subtopic-list');
+  if(dl){ dl.innerHTML = subtopicHistory.map(function(s){ return '<option value="'+s+'">'; }).join(''); }
+}
 
 var currentFolder = '';
 var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2YmFuamRpb2FoYWFxYW1pYmJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzAzOTYsImV4cCI6MjA5MTQwNjM5Nn0.gKFDN93mmaKhVH-Quw69bZl9AYaVp_b4aJ02oT9C-Bc';
@@ -544,7 +551,7 @@ function generateGrid() {
     var score = (i === mcCount) ? mcBase + mcRem : mcBase;
     var cell = document.createElement('div');
     cell.className = 'q-cell';
-    cell.innerHTML = '<div class="q-cell-num">' + i + '번 <span style="color:#9ca3af;font-size:10px;">' + score + '점</span></div><input type="text" id="qc-' + i + '" placeholder="1~5" maxlength="1">';
+    cell.innerHTML = '<div class="q-cell-num">' + i + '번 <span style="color:#9ca3af;font-size:10px;">' + score + '점</span></div><input type="text" id="qc-' + i + '" placeholder="1~5" maxlength="1" style="margin-bottom:4px;"><input type="text" id="qs-' + i + '" placeholder="소단원(선택)" style="font-size:10px;color:#6b7280;" list="subtopic-list">';
     mcCells.appendChild(cell);
   }
 
@@ -639,9 +646,9 @@ function addQ(type) {
   var div = document.createElement('div');
   div.className = 'q-row';
   if (type === 'mc') {
-    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc" selected>객관식</option><option value="essay">서술형</option></select><select><option>①</option><option>②</option><option>③</option><option>④</option><option>⑤</option></select><input type="number" value="4" min="1" max="100" onchange="updateScoreTotal()"><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumQ();updateScoreTotal()">X</button>';
+    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc" selected>객관식</option><option value="essay">서술형</option></select><select><option>①</option><option>②</option><option>③</option><option>④</option><option>⑤</option></select><input type="text" placeholder="소단원 (선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="4" min="1" max="100" onchange="updateScoreTotal()"><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumQ();updateScoreTotal()">X</button>';
   } else {
-    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc">객관식</option><option value="essay" selected>서술형</option></select><input type="text" placeholder="선생님채점" disabled style="background:#f9fafb;color:#9ca3af;"><input type="number" value="10" min="1" max="100" onchange="updateScoreTotal()"><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumQ();updateScoreTotal()">X</button>';
+    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc">객관식</option><option value="essay" selected>서술형</option></select><input type="text" placeholder="선생님채점" disabled style="background:#f9fafb;color:#9ca3af;"><input type="text" placeholder="소단원 (선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="10" min="1" max="100" onchange="updateScoreTotal()"><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumQ();updateScoreTotal()">X</button>';
   }
   document.getElementById('q-list').appendChild(div);
   updateScoreTotal();
@@ -689,7 +696,8 @@ async function createExam() {
       var raw = inp.value.trim();
       if (!raw) { alert(i + '번 정답을 입력해주세요.'); return; }
       var score = (i === mcCount) ? mcBase + mcRem : mcBase;
-      questions.push({num: i, type: 'mc', answer: toAnswer(raw), score: score});
+      var subtopic = document.getElementById('qs-' + i) ? document.getElementById('qs-' + i).value.trim() : '';
+      questions.push({num: i, type: 'mc', answer: toAnswer(raw), score: score, subtopic: subtopic});
     }
     for (var j = mcCount + 1; j <= mcCount + essayCount; j++) {
       questions.push({num: j, type: 'essay', answer: '', score: essayScoreEach});
@@ -707,11 +715,15 @@ async function createExam() {
     if (!rows.length) { alert('문항을 추가해주세요.'); return; }
     rows.forEach(function(row, idx) {
       var sels = row.querySelectorAll('select');
-      var inps = row.querySelectorAll('input[type="number"]');
+      var textInps = row.querySelectorAll('input[type="text"]');
+      var numInps = row.querySelectorAll('input[type="number"]');
       var type = sels[0].value;
       var answer = type === 'mc' ? sels[1].value : '';
-      var score = Number(inps[0] ? inps[0].value : 4);
-      questions.push({num: idx + 1, type: type, answer: answer, score: score});
+      var score = Number(numInps[0] ? numInps[0].value : 4);
+      // 소단원: 마지막 text input (disabled 아닌 것)
+      var subtopic = '';
+      textInps.forEach(function(inp) { if (!inp.disabled && inp.placeholder && inp.placeholder.indexOf('소단원') > -1) subtopic = inp.value.trim(); });
+      questions.push({num: idx + 1, type: type, answer: answer, score: score, subtopic: subtopic});
     });
   }
 
@@ -732,6 +744,7 @@ async function createExam() {
       questions_json: JSON.stringify(questions),
       created_at: new Date().toLocaleString('ko-KR'), active: 'Y'
     });
+    updateSubtopicList(questions);
     toast('시험이 등록되었습니다!');
     await loadExamList();
     showQR(examId, title);
@@ -1170,12 +1183,14 @@ async function openEdit(examId) {
       div.innerHTML = '<div class="q-num">' + (i+1) + '</div>' +
         '<select><option value="mc" selected>객관식</option><option value="essay">서술형</option></select>' +
         '<select>' + opts + '</select>' +
+        '<input type="text" placeholder="소단원(선택)" value="' + (q.subtopic||'') + '" style="font-size:11px;" list="subtopic-list">' +
         '<input type="number" value="' + q.score + '" min="1" max="100" onchange="updateEditTotal()">' +
         '<button class="del-q" onclick="this.closest(\'.q-row\').remove();renumEditQ();updateEditTotal()">X</button>';
     } else {
       div.innerHTML = '<div class="q-num">' + (i+1) + '</div>' +
         '<select><option value="mc">객관식</option><option value="essay" selected>서술형</option></select>' +
         '<input type="text" placeholder="선생님채점" disabled style="background:#f9fafb;color:#9ca3af;">' +
+        '<input type="text" placeholder="소단원(선택)" value="' + (q.subtopic||'') + '" style="font-size:11px;" list="subtopic-list">' +
         '<input type="number" value="' + q.score + '" min="1" max="100" onchange="updateEditTotal()">' +
         '<button class="del-q" onclick="this.closest(\'.q-row\').remove();renumEditQ();updateEditTotal()">X</button>';
     }
@@ -1192,9 +1207,9 @@ function addEditQ(type) {
   var div = document.createElement('div');
   div.className = 'q-row';
   if (type === 'mc') {
-    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc" selected>객관식</option><option value="essay">서술형</option></select><select><option>①</option><option>②</option><option>③</option><option>④</option><option>⑤</option></select><input type="number" value="4" min="1" max="100" onchange="updateEditTotal()"><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumEditQ();updateEditTotal()">X</button>';
+    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc" selected>객관식</option><option value="essay">서술형</option></select><select><option>①</option><option>②</option><option>③</option><option>④</option><option>⑤</option></select><input type="text" placeholder="소단원(선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="4" min="1" max="100" onchange="updateEditTotal()"><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumEditQ();updateEditTotal()">X</button>';
   } else {
-    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc">객관식</option><option value="essay" selected>서술형</option></select><input type="text" placeholder="선생님채점" disabled style="background:#f9fafb;color:#9ca3af;"><input type="number" value="10" min="1" max="100" onchange="updateEditTotal()"><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumEditQ();updateEditTotal()">X</button>';
+    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc">객관식</option><option value="essay" selected>서술형</option></select><input type="text" placeholder="선생님채점" disabled style="background:#f9fafb;color:#9ca3af;"><input type="text" placeholder="소단원(선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="10" min="1" max="100" onchange="updateEditTotal()"><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumEditQ();updateEditTotal()">X</button>';
   }
   document.getElementById('edit-q-list').appendChild(div);
   updateEditTotal();
@@ -1231,11 +1246,14 @@ async function saveExamEdit() {
   var toAns = function(v) { var m={'①':'①','②':'②','③':'③','④':'④','⑤':'⑤'}; return m[v]||v; };
   rows.forEach(function(row, i) {
     var sels = row.querySelectorAll('select');
-    var inps = row.querySelectorAll('input[type="number"]');
+    var textInps = row.querySelectorAll('input[type="text"]');
+    var numInps = row.querySelectorAll('input[type="number"]');
     var type = sels[0].value;
     var answer = type === 'mc' ? sels[1].value : '';
-    var score = Number(inps[0] ? inps[0].value : 4);
-    questions.push({num: i+1, type: type, answer: answer, score: score});
+    var score = Number(numInps[0] ? numInps[0].value : 4);
+    var subtopic = '';
+    textInps.forEach(function(inp) { if (!inp.disabled && inp.placeholder && inp.placeholder.indexOf('소단원') > -1) subtopic = inp.value.trim(); });
+    questions.push({num: i+1, type: type, answer: answer, score: score, subtopic: subtopic});
   });
 
   var mc = questions.filter(function(q){return q.type==='mc';});
@@ -1253,6 +1271,7 @@ async function saveExamEdit() {
       essay_count: essay.length,
       questions_json: JSON.stringify(questions)
     }, '?exam_id=eq.' + editExamId);
+    updateSubtopicList(questions);
     document.getElementById('edit-modal').style.display = 'none';
     toast('✅ 시험이 수정되었습니다!');
     await loadExamList();
@@ -1292,5 +1311,6 @@ async function deleteExam(examId) {
 loadExamList();
 loadClasses();
 </script>
+<datalist id="subtopic-list"></datalist>
 </body>
 </html>
