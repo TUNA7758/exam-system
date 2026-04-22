@@ -50,8 +50,10 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 .q-cell input:focus{border-color:#3b82f6;background:#fff;}
 .q-cell input.essay-inp{font-size:13px;}
 /* 직접입력 */
-.q-header{display:grid;grid-template-columns:46px 95px 1fr 140px 75px 34px;gap:8px;padding:7px 0;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;margin-bottom:4px;}
-.q-row{display:grid;grid-template-columns:46px 95px 1fr 140px 75px 34px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #f3f4f6;}
+.q-header{display:grid;grid-template-columns:46px 95px 1fr 140px 75px 28px 34px;gap:8px;padding:7px 0;font-size:11px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;margin-bottom:4px;}
+.q-row{display:grid;grid-template-columns:46px 95px 1fr 140px 75px 28px 34px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #f3f4f6;}
+.ins-btn{width:28px;height:28px;border:none;background:#e0f2fe;color:#0369a1;border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;}
+.ins-btn:hover{background:#bae6fd;}
 .q-row:last-child{border-bottom:none;}
 .q-row input,.q-row select{border:1px solid #e5e7eb;border-radius:6px;padding:6px 8px;font-size:12px;width:100%;outline:none;font-family:inherit;}
 .q-num{font-size:13px;font-weight:600;color:#374151;text-align:center;}
@@ -239,7 +241,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 
         <!-- 직접 입력 -->
         <div id="method-manual" style="display:none;">
-          <div class="q-header" style="grid-template-columns:46px 95px 1fr 140px 75px 34px;"><span style="text-align:center;">번호</span><span>유형</span><span>정답</span><span>소단원(선택)</span><span>배점</span><span></span></div>
+          <div class="q-header"><span style="text-align:center;">번호</span><span>유형</span><span>정답</span><span>소단원(선택)</span><span>배점</span><span></span><span></span></div>
           <div id="q-list"></div>
           <div style="display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap;">
             <button class="btn btn-gray" onclick="addQ('mc')">+ 객관식 추가</button>
@@ -646,13 +648,44 @@ function addQ(type) {
   var div = document.createElement('div');
   div.className = 'q-row';
   if (type === 'mc') {
-    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc" selected>객관식</option><option value="essay">서술형</option></select><select><option>①</option><option>②</option><option>③</option><option>④</option><option>⑤</option></select><input type="text" placeholder="소단원 (선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="4" min="1" max="100" onchange="updateScoreTotal()"><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumQ();updateScoreTotal()">X</button>';
+    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc" selected>객관식</option><option value="essay">서술형</option></select><select><option>①</option><option>②</option><option>③</option><option>④</option><option>⑤</option></select><input type="text" placeholder="소단원(선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="4" min="1" max="100" onchange="updateScoreTotal()"><button class="ins-btn" title="이 위에 삽입" onclick="insertQAbove(this,\'mc\')">+</button><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumQ();updateScoreTotal()">X</button>';
   } else {
-    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc">객관식</option><option value="essay" selected>서술형</option></select><input type="text" placeholder="선생님채점" disabled style="background:#f9fafb;color:#9ca3af;"><input type="text" placeholder="소단원 (선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="10" min="1" max="100" onchange="updateScoreTotal()"><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumQ();updateScoreTotal()">X</button>';
+    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc">객관식</option><option value="essay" selected>서술형</option></select><input type="text" placeholder="선생님채점" disabled style="background:#f9fafb;color:#9ca3af;"><input type="text" placeholder="소단원(선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="10" min="1" max="100" onchange="updateScoreTotal()"><button class="ins-btn" title="이 위에 삽입" onclick="insertQAbove(this,\'essay\')">+</button><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumQ();updateScoreTotal()">X</button>';
   }
   document.getElementById('q-list').appendChild(div);
   updateScoreTotal();
 }
+function makeQRow(type, listId, renumFn, updateFn) {
+  var div = document.createElement('div');
+  div.className = 'q-row';
+  var isEdit = listId === 'edit-q-list';
+  var insFn = isEdit ? 'insertEditQAbove' : 'insertQAbove';
+  var delFn = isEdit
+    ? 'this.closest(\'.q-row\').remove();renumEditQ();updateEditTotal()'
+    : 'this.closest(\'.q-row\').remove();renumQ();updateScoreTotal()';
+  var changeFn = isEdit ? 'updateEditTotal()' : 'updateScoreTotal()';
+  if (type === 'mc') {
+    div.innerHTML = '<div class="q-num">?</div><select><option value="mc" selected>객관식</option><option value="essay">서술형</option></select><select><option>①</option><option>②</option><option>③</option><option>④</option><option>⑤</option></select><input type="text" placeholder="소단원(선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="4" min="1" max="100" onchange="' + changeFn + '"><button class="ins-btn" title="이 위에 삽입" onclick="' + insFn + '(this,\'mc\')">+</button><button class="del-q" onclick="' + delFn + '">X</button>';
+  } else {
+    div.innerHTML = '<div class="q-num">?</div><select><option value="mc">객관식</option><option value="essay" selected>서술형</option></select><input type="text" placeholder="선생님채점" disabled style="background:#f9fafb;color:#9ca3af;"><input type="text" placeholder="소단원(선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="10" min="1" max="100" onchange="' + changeFn + '"><button class="ins-btn" title="이 위에 삽입" onclick="' + insFn + '(this,\'essay\')">+</button><button class="del-q" onclick="' + delFn + '">X</button>';
+  }
+  return div;
+}
+
+function insertQAbove(btn, type) {
+  var row = btn.closest('.q-row');
+  var newRow = makeQRow(type, 'q-list', renumQ, updateScoreTotal);
+  row.parentNode.insertBefore(newRow, row);
+  renumQ(); updateScoreTotal();
+}
+
+function insertEditQAbove(btn, type) {
+  var row = btn.closest('.q-row');
+  var newRow = makeQRow(type, 'edit-q-list', renumEditQ, updateEditTotal);
+  row.parentNode.insertBefore(newRow, row);
+  renumEditQ(); updateEditTotal();
+}
+
 function renumQ() {
   document.querySelectorAll('#q-list .q-row').forEach(function(r, i) {
     var b = r.querySelector('.q-num');
@@ -1185,6 +1218,7 @@ async function openEdit(examId) {
         '<select>' + opts + '</select>' +
         '<input type="text" placeholder="소단원(선택)" value="' + (q.subtopic||'') + '" style="font-size:11px;" list="subtopic-list">' +
         '<input type="number" value="' + q.score + '" min="1" max="100" onchange="updateEditTotal()">' +
+        '<button class="ins-btn" title="이 위에 삽입" onclick="insertEditQAbove(this,\'mc\')">+</button>' +
         '<button class="del-q" onclick="this.closest(\'.q-row\').remove();renumEditQ();updateEditTotal()">X</button>';
     } else {
       div.innerHTML = '<div class="q-num">' + (i+1) + '</div>' +
@@ -1192,6 +1226,7 @@ async function openEdit(examId) {
         '<input type="text" placeholder="선생님채점" disabled style="background:#f9fafb;color:#9ca3af;">' +
         '<input type="text" placeholder="소단원(선택)" value="' + (q.subtopic||'') + '" style="font-size:11px;" list="subtopic-list">' +
         '<input type="number" value="' + q.score + '" min="1" max="100" onchange="updateEditTotal()">' +
+        '<button class="ins-btn" title="이 위에 삽입" onclick="insertEditQAbove(this,\'essay\')">+</button>' +
         '<button class="del-q" onclick="this.closest(\'.q-row\').remove();renumEditQ();updateEditTotal()">X</button>';
     }
     qList.appendChild(div);
@@ -1207,9 +1242,9 @@ function addEditQ(type) {
   var div = document.createElement('div');
   div.className = 'q-row';
   if (type === 'mc') {
-    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc" selected>객관식</option><option value="essay">서술형</option></select><select><option>①</option><option>②</option><option>③</option><option>④</option><option>⑤</option></select><input type="text" placeholder="소단원(선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="4" min="1" max="100" onchange="updateEditTotal()"><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumEditQ();updateEditTotal()">X</button>';
+    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc" selected>객관식</option><option value="essay">서술형</option></select><select><option>①</option><option>②</option><option>③</option><option>④</option><option>⑤</option></select><input type="text" placeholder="소단원(선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="4" min="1" max="100" onchange="updateEditTotal()"><button class="ins-btn" title="이 위에 삽입" onclick="insertEditQAbove(this,\'mc\')">+</button><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumEditQ();updateEditTotal()">X</button>';
   } else {
-    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc">객관식</option><option value="essay" selected>서술형</option></select><input type="text" placeholder="선생님채점" disabled style="background:#f9fafb;color:#9ca3af;"><input type="text" placeholder="소단원(선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="10" min="1" max="100" onchange="updateEditTotal()"><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumEditQ();updateEditTotal()">X</button>';
+    div.innerHTML = '<div class="q-num">' + nextNum + '</div><select><option value="mc">객관식</option><option value="essay" selected>서술형</option></select><input type="text" placeholder="선생님채점" disabled style="background:#f9fafb;color:#9ca3af;"><input type="text" placeholder="소단원(선택)" style="font-size:11px;" list="subtopic-list"><input type="number" value="10" min="1" max="100" onchange="updateEditTotal()"><button class="ins-btn" title="이 위에 삽입" onclick="insertEditQAbove(this,\'essay\')">+</button><button class="del-q" onclick="this.closest(\'.q-row\').remove();renumEditQ();updateEditTotal()">X</button>';
   }
   document.getElementById('edit-q-list').appendChild(div);
   updateEditTotal();
