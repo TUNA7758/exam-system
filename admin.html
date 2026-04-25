@@ -1023,6 +1023,7 @@ function renderGTable() {
     var mark = grading[currentSi][q.num];
     var sub = s.mcAnswers[q.num] || '';
     var tr = document.createElement('tr');
+    if (mark === 'X') tr.style.background = '#fff5f5';
     var opts = ['', '①', '②', '③', '④', '⑤'].map(function(c, i) {
       return '<option value="' + c + '"' + (sub === c ? ' selected' : '') + '>' + (i === 0 ? '미응답' : c) + '</option>';
     }).join('');
@@ -1067,10 +1068,24 @@ async function changeAnswer(si, qNum, newAnswer, correctAnswer, score) {
   toast('답안이 수정되었습니다!');
 }
 
-function setMark(qNum, mark) { grading[currentSi][qNum] = mark; renderGStudents(); renderGTable(); }
-function markAll(mark) {
-  currentExam.exam.questions.filter(function(q) { return q.type === 'mc'; }).forEach(function(q) { grading[currentSi][q.num] = mark; });
+async function setMark(qNum, mark) {
+  grading[currentSi][qNum] = mark;
+  // DB 저장 (임의 정답처리 반영)
+  var s = currentExam.students[currentSi];
+  var newMcScore = calcScore(currentSi);
+  await sbPatch('submissions', {mc_score: newMcScore, total_score: newMcScore + (Number(s.essay_score)||0)}, '?submit_id=eq.' + s.submit_id);
+  s.mc_score = newMcScore;
   renderGStudents(); renderGTable();
+  toast('채점이 저장되었습니다!');
+}
+async function markAll(mark) {
+  currentExam.exam.questions.filter(function(q) { return q.type === 'mc'; }).forEach(function(q) { grading[currentSi][q.num] = mark; });
+  var s = currentExam.students[currentSi];
+  var newMcScore = calcScore(currentSi);
+  await sbPatch('submissions', {mc_score: newMcScore, total_score: newMcScore + (Number(s.essay_score)||0)}, '?submit_id=eq.' + s.submit_id);
+  s.mc_score = newMcScore;
+  renderGStudents(); renderGTable();
+  toast('전체 채점이 저장되었습니다!');
 }
 
 async function saveEssay(submitId) {
