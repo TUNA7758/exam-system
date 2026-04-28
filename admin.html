@@ -296,8 +296,23 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
               <button class="all-x" onclick="markAll('X')">전체 <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#ef4444" stroke-width="2"><line x1="3" y1="3" x2="10" y2="10"/><line x1="10" y1="3" x2="3" y2="10"/></svg></button>
             </div>
           </div>
+          <!-- 정답표 + 요약 바 -->
+          <div style="padding:10px 14px;background:#f0f9ff;border-bottom:1px solid #e5e7eb;">
+            <div style="font-size:11px;font-weight:600;color:#0369a1;margin-bottom:6px;">📋 정답표</div>
+            <div id="answer-key" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+          </div>
+          <div id="grade-summary" style="display:none;padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e5e7eb;font-size:12px;">
+            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="color:#374151;font-weight:600;" id="sum-total"></span>
+              <span style="color:#16a34a;font-weight:600;" id="sum-correct"></span>
+              <span style="color:#dc2626;font-weight:600;" id="sum-wrong"></span>
+              <span style="color:#9ca3af;font-weight:600;" id="sum-skip"></span>
+              <span style="color:#3b82f6;font-weight:700;font-size:14px;" id="sum-score"></span>
+            </div>
+            <div id="sum-wrong-nums" style="font-size:11px;color:#dc2626;"></div>
+          </div>
           <table class="g-tbl">
-            <thead><tr><th>번호</th><th style="text-align:left;">정답</th><th>학생 답안 (수정가능)</th><th>채점</th></tr></thead>
+            <thead><tr><th>번호</th><th>정답 → 학생 답안</th><th>채점 수정</th></tr></thead>
             <tbody id="grade-tbody"></tbody>
           </table>
         </div>
@@ -1022,23 +1037,45 @@ function renderGTable() {
   mcQs.forEach(function(q) {
     var mark = grading[currentSi][q.num];
     var sub = s.mcAnswers[q.num] || '';
+    var isCorrect = mark === 'O';
+    var isSkip = !sub;
     var tr = document.createElement('tr');
-    if (mark === 'X') tr.style.background = '#fff5f5';
+
+    // 행 배경색
+    if (isCorrect) tr.style.background = '#f0fdf4';
+    else if (isSkip) tr.style.background = '#f9fafb';
+    else tr.style.background = '#fff5f5';
+
+    // 학생 답 색상
+    var subColor = isCorrect ? '#16a34a' : (isSkip ? '#9ca3af' : '#dc2626');
+    var subText = isSkip ? '미응답' : sub;
+
+    // 답안 수정 셀렉트
     var opts = ['', '①', '②', '③', '④', '⑤'].map(function(c, i) {
       return '<option value="' + c + '"' + (sub === c ? ' selected' : '') + '>' + (i === 0 ? '미응답' : c) + '</option>';
     }).join('');
-    var oSvg = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="' + (mark === 'O' ? '#3b82f6' : '#d1d5db') + '" stroke-width="2"><circle cx="7" cy="7" r="5"/></svg>';
-    var xSvg = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="' + (mark === 'X' ? '#ef4444' : '#d1d5db') + '" stroke-width="2"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg>';
+
+    var oSvg = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="' + (isCorrect ? '#16a34a' : '#d1d5db') + '" stroke-width="2.5"><circle cx="7" cy="7" r="5"/></svg>';
+    var xSvg = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="' + (!isCorrect && !isSkip ? '#dc2626' : '#d1d5db') + '" stroke-width="2.5"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg>';
+
     tr.innerHTML =
-      '<td>' + q.num + '</td>' +
-      '<td style="text-align:left;font-size:16px;">' + q.answer + '</td>' +
-      '<td><select class="ans-select" onchange="changeAnswer(' + currentSi + ',' + q.num + ',this.value,\'' + q.answer + '\',' + q.score + ')">' + opts + '</select></td>' +
-      '<td><div class="ox-wrap">' +
-        '<button class="ob' + (mark === 'O' ? ' on' : '') + '" onclick="setMark(' + q.num + ',\'O\')">' + oSvg + '</button>' +
-        '<button class="xb' + (mark === 'X' ? ' on' : '') + '" onclick="setMark(' + q.num + ',\'X\')">' + xSvg + '</button>' +
+      '<td style="font-weight:600;color:#374151;">' + q.num + '</td>' +
+      '<td>' +
+        '<span style="font-size:17px;color:#374151;">' + q.answer + '</span>' +
+        '<span style="color:#9ca3af;margin:0 6px;font-size:12px;">→</span>' +
+        '<span style="font-size:17px;font-weight:700;color:' + subColor + ';">' + subText + '</span>' +
+        '<span style="font-size:10px;color:#9ca3af;margin-left:8px;">' + (isCorrect ? '✓ 정답' : isSkip ? '미응답' : '✗ 오답') + '</span>' +
+      '</td>' +
+      '<td><div style="display:flex;align-items:center;gap:6px;justify-content:center;">' +
+        '<select class="ans-select" onchange="changeAnswer(' + currentSi + ',' + q.num + ',this.value,\'' + q.answer + '\',' + q.score + ')">' + opts + '</select>' +
+        '<button class="ob' + (isCorrect ? ' on' : '') + '" onclick="setMark(' + q.num + ',\'O\')">' + oSvg + '</button>' +
+        '<button class="xb' + (!isCorrect && !isSkip ? ' on' : '') + '" onclick="setMark(' + q.num + ',\'X\')">' + xSvg + '</button>' +
       '</div></td>';
     tbody.appendChild(tr);
   });
+
+  // 요약 바 업데이트
+  updateGradeSummary(s, mcQs);
 
   esQs.forEach(function(q) {
     var tr = document.createElement('tr');
@@ -1066,6 +1103,43 @@ async function changeAnswer(si, qNum, newAnswer, correctAnswer, score) {
   renderGStudents();
   renderGTable();
   toast('답안이 수정되었습니다!');
+}
+
+function renderAnswerKey() {
+  if (!currentExam) return;
+  var mcQs = currentExam.exam.questions.filter(function(q) { return q.type === 'mc'; });
+  var wrap = document.getElementById('answer-key');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  mcQs.forEach(function(q) {
+    var chip = document.createElement('div');
+    chip.style.cssText = 'display:inline-flex;align-items:center;gap:3px;background:#fff;border:1px solid #bae6fd;border-radius:6px;padding:3px 8px;font-size:12px;';
+    chip.innerHTML = '<span style="color:#6b7280;font-size:11px;">' + q.num + '</span><span style="font-weight:700;color:#0369a1;font-size:14px;">' + q.answer + '</span>';
+    wrap.appendChild(chip);
+  });
+}
+
+function updateGradeSummary(s, mcQs) {
+  var correctNums = [], wrongNums = [], skipNums = [];
+  mcQs.forEach(function(q) {
+    var mark = grading[currentSi][q.num];
+    var sub = s.mcAnswers[q.num] || '';
+    if (!sub) skipNums.push(q.num + '번');
+    else if (mark === 'O') correctNums.push(q.num + '번');
+    else wrongNums.push(q.num + '번');
+  });
+  var score = fmtScore(calcScore(currentSi) + (Number(s.essay_score)||0));
+  var total = mcQs.length;
+
+  var bar = document.getElementById('grade-summary');
+  if (bar) bar.style.display = 'block';
+  document.getElementById('sum-total').textContent  = '총 ' + total + '문항';
+  document.getElementById('sum-correct').textContent = '✅ 정답 ' + correctNums.length + '개';
+  document.getElementById('sum-wrong').textContent   = '❌ 오답 ' + wrongNums.length + '개';
+  document.getElementById('sum-skip').textContent    = '⬜ 미응답 ' + skipNums.length + '개';
+  document.getElementById('sum-score').textContent   = score + '점';
+  document.getElementById('sum-wrong-nums').textContent =
+    wrongNums.length ? '오답: ' + wrongNums.join(', ') : '';
 }
 
 async function setMark(qNum, mark) {
@@ -1207,6 +1281,7 @@ async function loadGradeData(examId) {
   renderGStudents();
   renderGTable();
   renderStats();
+  renderAnswerKey();
 }
 
 // ── 새로고침 카운터 ──
