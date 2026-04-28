@@ -1003,12 +1003,13 @@ async function openGrade(examId) {
 function calcScore(si) {
   var s = 0;
   currentExam.exam.questions.filter(function(q) { return q.type === 'mc'; }).forEach(function(q) {
-    if (grading[si][q.num] === 'O') s = Math.round((s + Number(q.score)) * 100) / 100;
+    if (grading[si][q.num] === 'O') s = Math.round((s + Number(q.score)) * 10) / 10;
   });
   return s;
 }
 function fmtScore(v) {
-  return Math.round(Number(v||0) * 100) / 100;
+  var n = Math.round(Number(v||0) * 10) / 10;
+  return n;
 }
 
 function renderGStudents() {
