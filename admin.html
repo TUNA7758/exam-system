@@ -1070,19 +1070,30 @@ async function changeAnswer(si, qNum, newAnswer, correctAnswer, score) {
 
 async function setMark(qNum, mark) {
   grading[currentSi][qNum] = mark;
-  // DB 저장 (임의 정답처리 반영)
   var s = currentExam.students[currentSi];
   var newMcScore = calcScore(currentSi);
-  await sbPatch('submissions', {mc_score: newMcScore, total_score: newMcScore + (Number(s.essay_score)||0)}, '?submit_id=eq.' + s.submit_id);
+  // grading 결과를 mcAnswers에 반영 (정답이면 정답값, 틀리면 기존 답 유지)
+  var q = currentExam.exam.questions.find(function(q){ return q.num === qNum; });
+  if (q) {
+    if (mark === 'O') s.mcAnswers[qNum] = q.answer; // 정답 처리
+    else if (mark === 'X' && s.mcAnswers[qNum] === q.answer) s.mcAnswers[qNum] = ''; // 오답 처리
+  }
+  var newAnswersJson = JSON.stringify({mc: s.mcAnswers, essay: s.essayAnswers});
+  await sbPatch('submissions', {answers_json: newAnswersJson, mc_score: newMcScore, total_score: newMcScore + (Number(s.essay_score)||0)}, '?submit_id=eq.' + s.submit_id);
   s.mc_score = newMcScore;
   renderGStudents(); renderGTable();
   toast('채점이 저장되었습니다!');
 }
 async function markAll(mark) {
-  currentExam.exam.questions.filter(function(q) { return q.type === 'mc'; }).forEach(function(q) { grading[currentSi][q.num] = mark; });
   var s = currentExam.students[currentSi];
+  currentExam.exam.questions.filter(function(q) { return q.type === 'mc'; }).forEach(function(q) {
+    grading[currentSi][q.num] = mark;
+    if (mark === 'O') s.mcAnswers[q.num] = q.answer;
+    else if (mark === 'X') s.mcAnswers[q.num] = '';
+  });
   var newMcScore = calcScore(currentSi);
-  await sbPatch('submissions', {mc_score: newMcScore, total_score: newMcScore + (Number(s.essay_score)||0)}, '?submit_id=eq.' + s.submit_id);
+  var newAnswersJson = JSON.stringify({mc: s.mcAnswers, essay: s.essayAnswers});
+  await sbPatch('submissions', {answers_json: newAnswersJson, mc_score: newMcScore, total_score: newMcScore + (Number(s.essay_score)||0)}, '?submit_id=eq.' + s.submit_id);
   s.mc_score = newMcScore;
   renderGStudents(); renderGTable();
   toast('전체 채점이 저장되었습니다!');
