@@ -1067,7 +1067,7 @@ function renderGTable() {
         '<span style="font-size:10px;color:#9ca3af;margin-left:8px;">' + (isCorrect ? '✓ 정답' : isSkip ? '미응답' : '✗ 오답') + '</span>' +
       '</td>' +
       '<td><div style="display:flex;align-items:center;gap:6px;justify-content:center;">' +
-        '<select class="ans-select" onchange="changeAnswer(' + currentSi + ',' + q.num + ',this.value,\'' + q.answer + '\',' + q.score + ')">' + opts + '</select>' +
+        '<select class="ans-select" data-si="' + currentSi + '" data-num="' + q.num + '" data-score="' + q.score + '" onchange="changeAnswerFromSelect(this)">' + opts + '</select>' +
         '<button class="ob' + (isCorrect ? ' on' : '') + '" onclick="setMark(' + q.num + ',\'O\')">' + oSvg + '</button>' +
         '<button class="xb' + (!isCorrect && !isSkip ? ' on' : '') + '" onclick="setMark(' + q.num + ',\'X\')">' + xSvg + '</button>' +
       '</div></td>';
@@ -1090,6 +1090,14 @@ function renderGTable() {
       '</div></td>';
     tbody.appendChild(tr);
   });
+}
+
+function changeAnswerFromSelect(sel) {
+  var si = Number(sel.dataset.si);
+  var qNum = Number(sel.dataset.num);
+  var score = Number(sel.dataset.score);
+  var q = currentExam.exam.questions.find(function(q){ return q.num === qNum; });
+  if (q) changeAnswer(si, qNum, sel.value, q.answer, score);
 }
 
 async function changeAnswer(si, qNum, newAnswer, correctAnswer, score) {
