@@ -1085,7 +1085,7 @@ function renderGTable() {
       '<td style="text-align:left;font-size:11px;color:#6b7280;">' + (s.essayAnswers[q.num] || '(미작성)') + '</td>' +
       '<td style="font-size:12px;color:#9ca3af;">선생님 채점</td>' +
       '<td><div style="display:flex;align-items:center;gap:5px;justify-content:center;">' +
-        '<input class="essay-score-inp" type="number" min="0" max="' + q.score + '" placeholder="/' + q.score + 'pt" value="' + (s.essay_score || '') + '" id="ess-' + s.submit_id.replace(/[^a-zA-Z0-9]/g,\'_\') + '">' +
+        '<input class="essay-score-inp" type="number" min="0" max="' + q.score + '" placeholder="/' + q.score + 'pt" value="' + (s.essay_score || '') + '" id="ess-' + s.submit_id + '">' +
         '<button class="save-e" onclick="saveEssay(\'' + s.submit_id + '\')">저장</button>' +
       '</div></td>';
     tbody.appendChild(tr);
@@ -1174,8 +1174,7 @@ async function markAll(mark) {
 }
 
 async function saveEssay(submitId) {
-  var safeId = submitId.replace(/[^a-zA-Z0-9]/g, '_');
-  var inp = document.getElementById('ess-' + safeId);
+  var inp = document.getElementById('ess-' + submitId);
   if (!inp) { alert('입력칸을 찾을 수 없습니다. 새로고침 후 다시 시도해주세요.'); return; }
   var score = Number(inp.value);
   if (isNaN(score) || score < 0) { alert('올바른 점수를 입력해주세요.'); return; }
