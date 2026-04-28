@@ -1030,7 +1030,7 @@ function renderGTable() {
   var s = currentExam.students[currentSi];
   var mcQs = currentExam.exam.questions.filter(function(q) { return q.type === 'mc'; });
   var esQs = currentExam.exam.questions.filter(function(q) { return q.type === 'essay'; });
-  document.getElementById('g-student-name').textContent = s.student_name + ' (' + s.student_number + '번 / ' + (s.class_name || '') + ')';
+  document.getElementById('g-student-name').textContent = s.student_name + ' (' + s.student_number + '번 · ' + (s.class_name || '') + ')';
   var tbody = document.getElementById('grade-tbody');
   tbody.innerHTML = '';
 
@@ -1040,56 +1040,100 @@ function renderGTable() {
     var isCorrect = mark === 'O';
     var isSkip = !sub;
     var tr = document.createElement('tr');
-
-    // 행 배경색
     if (isCorrect) tr.style.background = '#f0fdf4';
     else if (isSkip) tr.style.background = '#f9fafb';
     else tr.style.background = '#fff5f5';
 
-    // 학생 답 색상
     var subColor = isCorrect ? '#16a34a' : (isSkip ? '#9ca3af' : '#dc2626');
     var subText = isSkip ? '미응답' : sub;
+    var statusText = isCorrect ? '✓ 정답' : (isSkip ? '미응답' : '✗ 오답');
 
-    // 답안 수정 셀렉트
-    var opts = ['', '①', '②', '③', '④', '⑤'].map(function(c, i) {
-      return '<option value="' + c + '"' + (sub === c ? ' selected' : '') + '>' + (i === 0 ? '미응답' : c) + '</option>';
-    }).join('');
+    // 답 셀
+    var tdAns = document.createElement('td');
+    tdAns.innerHTML =
+      '<span style="font-size:17px;color:#374151;">' + q.answer + '</span>' +
+      '<span style="color:#9ca3af;margin:0 6px;font-size:12px;">→</span>' +
+      '<span style="font-size:17px;font-weight:700;color:' + subColor + ';">' + subText + '</span>' +
+      '<span style="font-size:10px;color:#9ca3af;margin-left:8px;">' + statusText + '</span>';
 
-    var oSvg = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="' + (isCorrect ? '#16a34a' : '#d1d5db') + '" stroke-width="2.5"><circle cx="7" cy="7" r="5"/></svg>';
-    var xSvg = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="' + (!isCorrect && !isSkip ? '#dc2626' : '#d1d5db') + '" stroke-width="2.5"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg>';
+    // 수정 셀
+    var tdEdit = document.createElement('td');
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;align-items:center;gap:6px;justify-content:center;';
 
-    tr.innerHTML =
-      '<td style="font-weight:600;color:#374151;">' + q.num + '</td>' +
-      '<td>' +
-        '<span style="font-size:17px;color:#374151;">' + q.answer + '</span>' +
-        '<span style="color:#9ca3af;margin:0 6px;font-size:12px;">→</span>' +
-        '<span style="font-size:17px;font-weight:700;color:' + subColor + ';">' + subText + '</span>' +
-        '<span style="font-size:10px;color:#9ca3af;margin-left:8px;">' + (isCorrect ? '✓ 정답' : isSkip ? '미응답' : '✗ 오답') + '</span>' +
-      '</td>' +
-      '<td><div style="display:flex;align-items:center;gap:6px;justify-content:center;">' +
-        '<select class="ans-select" data-si="' + currentSi + '" data-num="' + q.num + '" data-score="' + q.score + '" onchange="changeAnswerFromSelect(this)">' + opts + '</select>' +
-        '<button class="ob' + (isCorrect ? ' on' : '') + '" onclick="setMark(' + q.num + ',\'O\')">' + oSvg + '</button>' +
-        '<button class="xb' + (!isCorrect && !isSkip ? ' on' : '') + '" onclick="setMark(' + q.num + ',\'X\')">' + xSvg + '</button>' +
-      '</div></td>';
+    // 셀렉트
+    var sel = document.createElement('select');
+    sel.className = 'ans-select';
+    var choices = ['', '①', '②', '③', '④', '⑤'];
+    choices.forEach(function(c, ci) {
+      var opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = ci === 0 ? '미응답' : c;
+      if (sub === c) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    (function(qNum, qAnswer, qScore) {
+      sel.addEventListener('change', function() {
+        changeAnswer(currentSi, qNum, sel.value, qAnswer, qScore);
+      });
+    })(q.num, q.answer, q.score);
+
+    // O버튼
+    var oBtn = document.createElement('button');
+    oBtn.className = 'ob' + (isCorrect ? ' on' : '');
+    oBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="' + (isCorrect ? '#16a34a' : '#d1d5db') + '" stroke-width="2.5"><circle cx="7" cy="7" r="5"/></svg>';
+    (function(qNum) { oBtn.addEventListener('click', function() { setMark(qNum, 'O'); }); })(q.num);
+
+    // X버튼
+    var xBtn = document.createElement('button');
+    xBtn.className = 'xb' + (!isCorrect && !isSkip ? ' on' : '');
+    xBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="' + (!isCorrect && !isSkip ? '#dc2626' : '#d1d5db') + '" stroke-width="2.5"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg>';
+    (function(qNum) { xBtn.addEventListener('click', function() { setMark(qNum, 'X'); }); })(q.num);
+
+    var numTd = document.createElement('td');
+    numTd.style.fontWeight = '600';
+    numTd.textContent = q.num;
+
+    wrap.appendChild(sel); wrap.appendChild(oBtn); wrap.appendChild(xBtn);
+    tdEdit.appendChild(wrap);
+    tr.appendChild(numTd); tr.appendChild(tdAns); tr.appendChild(tdEdit);
     tbody.appendChild(tr);
   });
-
-  // 요약 바 업데이트
-  updateGradeSummary(s, mcQs);
 
   esQs.forEach(function(q) {
     var tr = document.createElement('tr');
     tr.style.background = '#fffbeb';
-    tr.innerHTML =
-      '<td>' + q.num + '<div style="font-size:9px;color:#d97706;">서술형</div></td>' +
-      '<td style="text-align:left;font-size:11px;color:#6b7280;">' + (s.essayAnswers[q.num] || '(미작성)') + '</td>' +
-      '<td style="font-size:12px;color:#9ca3af;">선생님 채점</td>' +
-      '<td><div style="display:flex;align-items:center;gap:5px;justify-content:center;">' +
-        '<input class="essay-score-inp" type="number" min="0" max="' + q.score + '" placeholder="/' + q.score + 'pt" value="' + (s.essay_score || '') + '" id="ess-' + s.submit_id + '">' +
-        '<button class="save-e" onclick="saveEssay(\'' + s.submit_id + '\')">저장</button>' +
-      '</div></td>';
+
+    var numTd = document.createElement('td');
+    numTd.innerHTML = q.num + '<div style="font-size:9px;color:#d97706;">서술형</div>';
+
+    var ansTd = document.createElement('td');
+    ansTd.style.cssText = 'text-align:left;font-size:11px;color:#6b7280;';
+    ansTd.textContent = s.essayAnswers[q.num] || '(미작성)';
+
+    var scoreTd = document.createElement('td');
+    var scoreWrap = document.createElement('div');
+    scoreWrap.style.cssText = 'display:flex;align-items:center;gap:5px;justify-content:center;';
+    var inp = document.createElement('input');
+    inp.className = 'essay-score-inp';
+    inp.type = 'number';
+    inp.min = '0';
+    inp.max = String(q.score);
+    inp.placeholder = '/' + q.score + 'pt';
+    inp.value = s.essay_score || '';
+    inp.id = 'ess-' + s.submit_id;
+    var saveBtn = document.createElement('button');
+    saveBtn.className = 'save-e';
+    saveBtn.textContent = '저장';
+    (function(sid) { saveBtn.addEventListener('click', function() { saveEssay(sid); }); })(s.submit_id);
+    scoreWrap.appendChild(inp); scoreWrap.appendChild(saveBtn);
+    scoreTd.appendChild(scoreWrap);
+
+    tr.appendChild(numTd); tr.appendChild(ansTd); tr.appendChild(scoreTd);
     tbody.appendChild(tr);
   });
+
+  updateGradeSummary(s, mcQs);
 }
 
 function changeAnswerFromSelect(sel) {
