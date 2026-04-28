@@ -1048,7 +1048,7 @@ function renderGTable() {
       '<td style="text-align:left;font-size:11px;color:#6b7280;">' + (s.essayAnswers[q.num] || '(미작성)') + '</td>' +
       '<td style="font-size:12px;color:#9ca3af;">선생님 채점</td>' +
       '<td><div style="display:flex;align-items:center;gap:5px;justify-content:center;">' +
-        '<input class="essay-score-inp" type="number" min="0" max="' + q.score + '" placeholder="/' + q.score + '" value="' + (s.essay_score || '') + '" id="ess-' + s.submit_id + '">' +
+        '<input class="essay-score-inp" type="number" min="0" max="' + q.score + '" placeholder="/' + q.score + 'pt" value="' + (s.essay_score || '') + '" id="ess-' + s.submit_id.replace(/[^a-zA-Z0-9]/g,\'_\') + '">' +
         '<button class="save-e" onclick="saveEssay(\'' + s.submit_id + '\')">저장</button>' +
       '</div></td>';
     tbody.appendChild(tr);
@@ -1100,14 +1100,26 @@ async function markAll(mark) {
 }
 
 async function saveEssay(submitId) {
-  var inp = document.getElementById('ess-' + submitId);
+  var safeId = submitId.replace(/[^a-zA-Z0-9]/g, '_');
+  var inp = document.getElementById('ess-' + safeId);
+  if (!inp) { alert('입력칸을 찾을 수 없습니다. 새로고침 후 다시 시도해주세요.'); return; }
   var score = Number(inp.value);
-  var s = currentExam.students.find(function(s) { return s.submit_id === submitId; });
-  var mcScore = Number(s.mc_score) || 0;
-  await sbPatch('submissions', {essay_score: score, total_score: mcScore + score, graded: 'Y'}, '?submit_id=eq.' + submitId);
-  s.essay_score = score; s.graded = 'Y';
-  toast('서술형 점수 저장 완료!');
-  renderGStudents();
+  if (isNaN(score) || score < 0) { alert('올바른 점수를 입력해주세요.'); return; }
+  var s = currentExam.students.find(function(st) { return st.submit_id === submitId; });
+  if (!s) { alert('학생 데이터를 찾을 수 없습니다.'); return; }
+  var mcScore = fmtScore(Number(s.mc_score) || 0);
+  var total = fmtScore(mcScore + score);
+  try {
+    var btn = document.querySelector('[onclick="saveEssay('' + submitId + '')"]');
+    if (btn) { btn.disabled = true; btn.textContent = '저장중...'; }
+    await sbPatch('submissions', {essay_score: score, total_score: total, graded: 'Y'}, '?submit_id=eq.' + submitId);
+    s.essay_score = score; s.total_score = total; s.graded = 'Y';
+    if (btn) { btn.disabled = false; btn.textContent = '저장'; }
+    toast('✅ 서술형 점수 저장 완료!');
+    renderGStudents();
+  } catch(e) {
+    alert('저장 실패: ' + e.message);
+  }
 }
 
 function renderStats() {
