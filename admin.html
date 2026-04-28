@@ -465,6 +465,14 @@ function goPage(id) {
 }
 
 // 시험 목록
+function getExamRow(btn) { return btn.closest('tr'); }
+function showQRById(btn) { var tr=getExamRow(btn); showQR(tr.dataset.examId, tr.dataset.title); }
+function openGradeById(btn) { openGrade(getExamRow(btn).dataset.examId); }
+function openEditById(btn) { openEdit(getExamRow(btn).dataset.examId); }
+function toggleExamById(btn) { var tr=getExamRow(btn); toggleExam(tr.dataset.examId, tr.dataset.active); }
+function clearSubmissionsById(btn) { var tr=getExamRow(btn); clearSubmissions(tr.dataset.examId, tr.dataset.title); }
+function deleteExamById(btn) { deleteExam(getExamRow(btn).dataset.examId); }
+
 async function loadExamList() {
   var allData = await sbGet('exams', '?order=created_at.desc');
   if (!allData) allData = [];
@@ -511,18 +519,21 @@ async function loadExamList() {
     var subCount = subs ? subs.length : 0;
     var folder = ex.folder || '미분류';
     var tr = document.createElement('tr');
+    tr.dataset.examId = ex.exam_id;
+    tr.dataset.title = ex.title;
+    tr.dataset.active = ex.active;
     tr.innerHTML = '<td><strong>' + ex.title + '</strong></td>' +
       '<td><span style="font-size:11px;background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:10px;">' + folder + '</span></td>' +
       '<td style="font-size:12px;">객' + ex.mc_count + '/서' + ex.essay_count + '</td>' +
       '<td><span style="color:#3b82f6;font-weight:600;">' + subCount + '명</span></td>' +
       '<td><span class="' + (ex.active === 'Y' ? 'badge-on' : 'badge-off') + '">' + (ex.active === 'Y' ? '진행중' : '마감') + '</span></td>' +
       '<td><div class="btn-group">' +
-        '<button class="btn btn-gray btn-sm" onclick="showQR(' + JSON.stringify(ex.exam_id) + ',' + JSON.stringify(ex.title) + ')">QR</button>' +
-        '<button class="btn btn-green btn-sm" onclick="openGrade(' + JSON.stringify(ex.exam_id) + ')">채점</button>' +
-        '<button class="btn btn-primary btn-sm" onclick="openEdit(' + JSON.stringify(ex.exam_id) + ')">수정</button>' +
-        '<button class="btn btn-gray btn-sm" onclick="toggleExam(' + JSON.stringify(ex.exam_id) + ',' + JSON.stringify(ex.active) + ')">' + (ex.active === 'Y' ? '마감' : '재개') + '</button>' +
-        (subCount > 0 ? '<button class="btn btn-danger btn-sm" onclick="clearSubmissions(' + JSON.stringify(ex.exam_id) + ',' + JSON.stringify(ex.title) + ')">제출초기화</button>' : '') +
-        '<button class="btn btn-danger btn-sm" onclick="deleteExam(' + JSON.stringify(ex.exam_id) + ')">삭제</button>' +
+        '<button class="btn btn-gray btn-sm" onclick="showQRById(this)">QR</button>' +
+        '<button class="btn btn-green btn-sm" onclick="openGradeById(this)">채점</button>' +
+        '<button class="btn btn-primary btn-sm" onclick="openEditById(this)">수정</button>' +
+        '<button class="btn btn-gray btn-sm" onclick="toggleExamById(this)">' + (ex.active === 'Y' ? '마감' : '재개') + '</button>' +
+        (subCount > 0 ? '<button class="btn btn-danger btn-sm" onclick="clearSubmissionsById(this)">제출초기화</button>' : '') +
+        '<button class="btn btn-danger btn-sm" onclick="deleteExamById(this)">삭제</button>' +
       '</div></td>';
     tbody.appendChild(tr);
   }
