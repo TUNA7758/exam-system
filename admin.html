@@ -283,7 +283,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
       <div class="page-sub">학생을 클릭하면 채점표가 나타납니다.</div>
       <div class="grade-wrap">
         <div class="s-sidebar">
-          <div class="s-sidebar-head">제출한 학생</div>
+          <div class="s-sidebar-head">제출한 학생 <span id="student-count" style="color:#3b82f6;font-weight:700;"></span></div>
           <div id="grade-student-list"></div>
         </div>
         <div class="g-main">
@@ -292,6 +292,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
             <div class="g-btns">
               <span id="refresh-counter" style="display:none;font-size:11px;color:#9ca3af;align-items:center;gap:4px;"><span>30초 후 자동 갱신</span></span>
               <button class="btn btn-gray btn-sm" onclick="loadGradeData(currentGradeExamId);refreshCountdown=30;">🔄 새로고침</button>
+              <button class="btn btn-gray btn-sm" onclick="markSkipAsO()" style="background:#fef9c3;color:#854d0e;border:1px solid #fde047;" title="미응답 문항을 모두 정답 처리">미응답→정답</button>
               <button class="all-o" onclick="markAll('O')">전체 <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="6.5" cy="6.5" r="4.5"/></svg></button>
               <button class="all-x" onclick="markAll('X')">전체 <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#ef4444" stroke-width="2"><line x1="3" y1="3" x2="10" y2="10"/><line x1="10" y1="3" x2="3" y2="10"/></svg></button>
             </div>
@@ -1003,7 +1004,8 @@ async function openGrade(examId) {
 function calcScore(si) {
   var s = 0;
   currentExam.exam.questions.filter(function(q) { return q.type === 'mc'; }).forEach(function(q) {
-    if (grading[si][q.num] === 'O') s = Math.round((s + Number(q.score)) * 10) / 10;
+    var mark = grading[si] ? grading[si][q.num] : 'SKIP';
+    if (mark === 'O') s = Math.round((s + Number(q.score)) * 10) / 10;
   });
   return s;
 }
@@ -1012,13 +1014,31 @@ function fmtScore(v) {
   return n;
 }
 
+async function markSkipAsO() {
+  if (!currentExam) return;
+  var s = currentExam.students[currentSi];
+  var mcQs = currentExam.exam.questions.filter(function(q){ return q.type === 'mc'; });
+  var skipQs = mcQs.filter(function(q){ return grading[currentSi][q.num] === 'SKIP' || !s.mcAnswers[q.num]; });
+  if (!skipQs.length) { toast('미응답 문항이 없습니다.'); return; }
+  skipQs.forEach(function(q){ grading[currentSi][q.num] = 'O'; });
+  var newMcScore = calcScore(currentSi);
+  var newAnswersJson = JSON.stringify({mc: s.mcAnswers, essay: s.essayAnswers});
+  await sbPatch('submissions', {mc_score: newMcScore, total_score: Math.round((newMcScore + (Number(s.essay_score)||0))*10)/10}, '?submit_id=eq.' + s.submit_id);
+  s.mc_score = newMcScore;
+  renderGStudents(); renderGTable();
+  toast('✅ 미응답 ' + skipQs.length + '문항 정답 처리 완료!');
+}
+
 function renderGStudents() {
   var el = document.getElementById('grade-student-list');
   el.innerHTML = '';
+  var countEl = document.getElementById('student-count');
   if (!currentExam.students.length) {
     el.innerHTML = '<div style="padding:16px;font-size:12px;color:#9ca3af;text-align:center;">아직 제출한 학생이 없습니다.</div>';
+    if (countEl) countEl.textContent = '(0명)';
     return;
   }
+  if (countEl) countEl.textContent = '(' + currentExam.students.length + '명)';
   currentExam.students.forEach(function(s, si) {
     var score = fmtScore(calcScore(si) + (Number(s.essay_score) || 0));
     var div = document.createElement('div');
@@ -1047,10 +1067,10 @@ function renderGTable() {
   tbody.innerHTML = '';
 
   mcQs.forEach(function(q) {
-    var mark = grading[currentSi][q.num];
+    var mark = grading[currentSi][q.num] || 'SKIP';
     var sub = s.mcAnswers[q.num] || '';
     var isCorrect = mark === 'O';
-    var isSkip = !sub;
+    var isSkip = mark === 'SKIP' || !sub;
     var tr = document.createElement('tr');
     if (isCorrect) tr.style.background = '#f0fdf4';
     else if (isSkip) tr.style.background = '#f9fafb';
@@ -1186,9 +1206,8 @@ function renderAnswerKey() {
 function updateGradeSummary(s, mcQs) {
   var correctNums = [], wrongNums = [], skipNums = [];
   mcQs.forEach(function(q) {
-    var mark = grading[currentSi][q.num];
-    var sub = s.mcAnswers[q.num] || '';
-    if (!sub) skipNums.push(q.num + '번');
+    var mark = grading[currentSi][q.num] || 'SKIP';
+    if (mark === 'SKIP') skipNums.push(q.num + '번');
     else if (mark === 'O') correctNums.push(q.num + '번');
     else wrongNums.push(q.num + '번');
   });
@@ -1250,6 +1269,7 @@ async function saveEssay(submitId) {
   s.essay_score = score; s.total_score = total; s.graded = 'Y';
   toast('서술형 점수 저장 완료!');
   renderGStudents();
+  renderGTable(); // 서술형 점수 채점표에도 반영
 }
 
 function renderStats() {
@@ -1317,14 +1337,19 @@ async function loadGradeData(examId) {
     itemStats: itemStats
   };
 
-  // 기존에 없던 학생만 채점 초기화 (기존 채점 유지)
+  // 매번 DB 데이터 기준으로 채점 초기화 (정확성 보장)
   currentExam.students.forEach(function(s, si) {
-    if (!grading[si]) {
-      grading[si] = {};
-      questions.filter(function(q) { return q.type === 'mc'; }).forEach(function(q) {
-        grading[si][q.num] = String(s.mcAnswers[q.num] || '') === String(q.answer) ? 'O' : 'X';
-      });
-    }
+    grading[si] = {};
+    questions.filter(function(q) { return q.type === 'mc'; }).forEach(function(q) {
+      var submitted = String(s.mcAnswers[q.num] || '');
+      if (!submitted) {
+        grading[si][q.num] = 'SKIP'; // 미응답
+      } else if (submitted === String(q.answer)) {
+        grading[si][q.num] = 'O';
+      } else {
+        grading[si][q.num] = 'X';
+      }
+    });
   });
 
   // 현재 선택된 학생 유지 (범위 초과시 0으로)
@@ -1476,8 +1501,35 @@ async function saveExamEdit() {
       questions_json: JSON.stringify(questions)
     }, '?exam_id=eq.' + editExamId);
     updateSubtopicList(questions);
+
+    // 기존 제출 데이터 전체 재채점
+    var mcQs = questions.filter(function(q){ return q.type === 'mc'; });
+    var submissions = await sbGet('submissions', '?exam_id=eq.' + editExamId);
+    if (submissions && submissions.length) {
+      btn.textContent = '재채점 중...';
+      for (var i = 0; i < submissions.length; i++) {
+        var sub = submissions[i];
+        var answers = JSON.parse(sub.answers_json || '{}');
+        var mcAnswers = answers.mc || {};
+        var newMcScore = 0;
+        mcQs.forEach(function(q) {
+          var submitted = String(mcAnswers[q.num] || '');
+          if (submitted && submitted === String(q.answer)) {
+            newMcScore = Math.round((newMcScore + Number(q.score)) * 10) / 10;
+          }
+        });
+        var essayScore = Number(sub.essay_score) || 0;
+        await sbPatch('submissions', {
+          mc_score: newMcScore,
+          total_score: Math.round((newMcScore + essayScore) * 10) / 10
+        }, '?submit_id=eq.' + sub.submit_id);
+      }
+      toast('✅ 시험 수정 + ' + submissions.length + '명 재채점 완료!');
+    } else {
+      toast('✅ 시험이 수정되었습니다!');
+    }
+
     document.getElementById('edit-modal').style.display = 'none';
-    toast('✅ 시험이 수정되었습니다!');
     await loadExamList();
   } catch(e) {
     alert('오류: ' + e.message);
