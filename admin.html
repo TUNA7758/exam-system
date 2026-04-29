@@ -1137,7 +1137,7 @@ function renderGTable() {
     tr.style.background = '#fffbeb';
 
     var numTd = document.createElement('td');
-    numTd.innerHTML = q.num + '<div style="font-size:9px;color:#d97706;">서술형</div>';
+    numTd.innerHTML = q.num + '<div style="font-size:9px;color:#d97706;">서술형 (배점 ' + q.score + '점)</div>';
 
     var ansTd = document.createElement('td');
     ansTd.style.cssText = 'text-align:left;font-size:11px;color:#6b7280;';
@@ -1151,13 +1151,17 @@ function renderGTable() {
     inp.type = 'number';
     inp.min = '0';
     inp.max = String(q.score);
-    inp.placeholder = '/' + q.score + 'pt';
-    inp.value = s.essay_score || '';
-    inp.id = 'ess-' + s.submit_id;
+    inp.placeholder = '0~' + q.score + '점';
+    // 문항별 점수 불러오기 (essayScores 객체에서)
+    var essayScores = JSON.parse(s.essay_scores_json || '{}');
+    inp.value = essayScores[q.num] !== undefined ? essayScores[q.num] : '';
+    inp.id = 'ess-' + s.submit_id + '-' + q.num;
     var saveBtn = document.createElement('button');
     saveBtn.className = 'save-e';
     saveBtn.textContent = '저장';
-    (function(sid) { saveBtn.addEventListener('click', function() { saveEssay(sid); }); })(s.submit_id);
+    (function(sid, qnum, maxScore) {
+      saveBtn.addEventListener('click', function() { saveEssayByNum(sid, qnum, maxScore); });
+    })(s.submit_id, q.num, q.score);
     scoreWrap.appendChild(inp); scoreWrap.appendChild(saveBtn);
     scoreTd.appendChild(scoreWrap);
 
@@ -1256,20 +1260,45 @@ async function markAll(mark) {
   toast('전체 채점이 저장되었습니다!');
 }
 
-async function saveEssay(submitId) {
-  var inp = document.getElementById('ess-' + submitId);
+async function saveEssayByNum(submitId, qNum, maxScore) {
+  var inpId = 'ess-' + submitId + '-' + qNum;
+  var inp = document.getElementById(inpId);
   if (!inp) { alert('새로고침 후 다시 시도해주세요.'); return; }
   var score = Number(inp.value);
   if (isNaN(score) || score < 0) { alert('올바른 점수를 입력해주세요.'); return; }
+  if (score > maxScore) { alert(maxScore + '점 이하로 입력해주세요.'); return; }
+
   var s = currentExam.students.find(function(st) { return st.submit_id === submitId; });
   if (!s) return;
+
+  // 문항별 서술형 점수 저장
+  var essayScores = JSON.parse(s.essay_scores_json || '{}');
+  essayScores[qNum] = score;
+  s.essay_scores_json = JSON.stringify(essayScores);
+
+  // 전체 서술형 합계 계산
+  var totalEssay = 0;
+  currentExam.exam.questions.filter(function(q){ return q.type === 'essay'; }).forEach(function(q) {
+    totalEssay = fmtScore(totalEssay + (Number(essayScores[q.num]) || 0));
+  });
+
   var mcScore = fmtScore(Number(s.mc_score) || 0);
-  var total = fmtScore(mcScore + score);
-  await sbPatch('submissions', {essay_score: score, total_score: total, graded: 'Y'}, '?submit_id=eq.' + submitId);
-  s.essay_score = score; s.total_score = total; s.graded = 'Y';
-  toast('서술형 점수 저장 완료!');
+  var total = fmtScore(mcScore + totalEssay);
+
+  await sbPatch('submissions', {
+    essay_score: totalEssay,
+    essay_scores_json: s.essay_scores_json,
+    total_score: total,
+    graded: 'Y'
+  }, '?submit_id=eq.' + submitId);
+
+  s.essay_score = totalEssay; s.total_score = total; s.graded = 'Y';
+  toast(qNum + '번 서술형 ' + score + '점 저장 완료! (서술형 합계: ' + totalEssay + '점)');
+
+  // 저장 확인 표시
+  inp.style.borderColor = '#16a34a';
+  setTimeout(function(){ inp.style.borderColor = ''; }, 2000);
   renderGStudents();
-  renderGTable(); // 서술형 점수 채점표에도 반영
 }
 
 function renderStats() {
