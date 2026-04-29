@@ -1020,13 +1020,24 @@ async function markSkipAsO() {
   var mcQs = currentExam.exam.questions.filter(function(q){ return q.type === 'mc'; });
   var skipQs = mcQs.filter(function(q){ return grading[currentSi][q.num] === 'SKIP' || !s.mcAnswers[q.num]; });
   if (!skipQs.length) { toast('미응답 문항이 없습니다.'); return; }
-  skipQs.forEach(function(q){ grading[currentSi][q.num] = 'O'; });
+
+  // 미응답 문항을 정답으로 처리 - mcAnswers에도 정답값 넣기
+  skipQs.forEach(function(q){
+    grading[currentSi][q.num] = 'O';
+    s.mcAnswers[q.num] = q.answer; // answers_json에 정답값 저장
+  });
+
   var newMcScore = calcScore(currentSi);
+  // answers_json과 mc_score 둘 다 저장
   var newAnswersJson = JSON.stringify({mc: s.mcAnswers, essay: s.essayAnswers});
-  await sbPatch('submissions', {mc_score: newMcScore, total_score: Math.round((newMcScore + (Number(s.essay_score)||0))*10)/10}, '?submit_id=eq.' + s.submit_id);
+  await sbPatch('submissions', {
+    answers_json: newAnswersJson,
+    mc_score: newMcScore,
+    total_score: Math.round((newMcScore + (Number(s.essay_score)||0))*10)/10
+  }, '?submit_id=eq.' + s.submit_id);
   s.mc_score = newMcScore;
   renderGStudents(); renderGTable();
-  toast('✅ 미응답 ' + skipQs.length + '문항 정답 처리 완료!');
+  toast('✅ 미응답 ' + skipQs.length + '문항 정답 처리 + 저장 완료!');
 }
 
 function renderGStudents() {
