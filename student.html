@@ -300,7 +300,7 @@ async function submitAnswers(){
       class_name:studentData.class_name,
       submitted_date:today,
       answers_json:JSON.stringify({mc:mcAnswers,essay:essayAnswers}),
-      mc_score:round2(mcScore),essay_score:0,total_score:round2(mcScore),graded:'N'
+      mc_score:round2(mcScore),essay_score:0,essay_scores_json:'{}',total_score:round2(mcScore),graded:'N'
     });
 
     // 오답통계 업데이트
